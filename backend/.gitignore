@@ -1,0 +1,32 @@
+# Visual Studio 项目文件
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# 构建输出
+/bin/
+/obj/
+/out/
+/publish/
+
+# 日志文件
+*.log
+
+# NuGet包
+*.nupkg
+packages/
+
+# 本地数据库文件
+*.mdf
+*.ldf
+
+# 临时文件
+[Tt]emp/
+[Bb]uild/
+
+# 测试结果
+TestResults/
+
+# 配置文件（如果需要跟踪配置文件，可移除下面的行）
+appsettings.Development.json
