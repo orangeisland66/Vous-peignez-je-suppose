@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
-using you_draw_i_guess_project.Models;
-using you_draw_i_guess_project.Services;
+using backend.Models;
+using backend.Services;
 using Microsoft.AspNetCore.Http;
 
-namespace you_draw_i_guess_project.Controllers
+namespace backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

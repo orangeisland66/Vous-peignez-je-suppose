@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace you_draw_i_guess_project.Models
+namespace backend.Models
 {
     public class Game
     {
