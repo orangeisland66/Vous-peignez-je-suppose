@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using you_draw_i_guess_project.Models;
-using you_draw_i_guess_project.Services;
+using backend.Models;
+using backend.Services;
 
-namespace you_draw_i_guess_project.Hubs
+namespace backend.Hubs
 {
     public class GameHub : Hub
     {

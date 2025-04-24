@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using backend.Models;
 using backend.Services;
 
-namespace you_draw_i_guess_project.Controllers
+namespace backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
