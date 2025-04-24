@@ -1,81 +1,97 @@
-Vous peignez, je suppose
-├── backend                           后端代码目录
-│   ├── Controllers                   控制器目录，处理 API 请求
-│   │   ├── UserController.cs           用户相关 API 控制器
-│   │   ├── GameRoomController.cs       游戏房间相关 API 控制器
-│   │   ├── GameController.cs           游戏相关 API 控制器
-│   │   └── WordController.cs           词汇相关 API 控制器
-│   ├── Data                          数据访问层目录
-│   │   ├── Repositories              数据仓库目录，处理数据库操作
-│   │   │   ├── UserRepository.cs       用户数据仓库
-│   │   │   ├── GameRoomRepository.cs   游戏房间数据仓库
-│   │   │   ├── GameRepository.cs       游戏数据仓库
-│   │   │   └── WordRepository.cs       词汇数据仓库
-│   │   ├── DbContext.cs                数据库上下文，管理数据库连接和实体映射
-│   │   └── SeedData.cs                 初始化数据脚本，用于填充数据库
-│   ├── Models                        数据模型目录，定义实体类
-│   │   ├── User.cs                     用户模型
-│   │   ├── GameRoom.cs                 游戏房间模型
-│   │   ├── Game.cs                     游戏模型
-│   │   ├── Word.cs                     词汇模型
-│   │   ├── DrawingBoard.cs             画板模型
-│   │   ├── Stroke.cs                   笔触模型
-│   │   └── Point.cs                    坐标点模型
-│   ├── Services                      业务逻辑层目录
-│   │   ├── UserService.cs              用户相关业务逻辑
-│   │   ├── GameRoomService.cs          游戏房间相关业务逻辑
-│   │   ├── GameService.cs              游戏相关业务逻辑
-│   │   └── WordService.cs              词汇相关业务逻辑
-│   ├── you-draw-i-guess.csproj         ASP.NET Core 项目文件
-│   ├── appsettings.json                应用配置文件
-│   ├── Program.cs                      应用启动入口
-│   └── Startup.cs                      应用启动配置类
-├── frontend                          前端代码目录
-│   ├── public                        静态资源目录
-│   │   ├── index.html                  应用入口 HTML 文件
-│   │   └── favicon.ico                 网站图标
-│   ├── src                           源代码目录
-│   │   ├── assets                    静态资源目录，如图片、样式表
-│   │   │   ├── images                图片资源
-│   │   │   └── styles                样式表资源
-│   │   ├── components                Vue 组件目录
-│   │   │   ├── UserLogin.vue           用户登录组件
-│   │   │   ├── UserRegister.vue        用户注册组件
-│   │   │   ├── GameRoomList.vue        游戏房间列表组件
-│   │   │   ├── GameRoomCreate.vue      创建游戏房间组件
-│   │   │   ├── DrawingBoard.vue        画板组件
-│   │   │   └── GuessWord.vue           猜词组件
-│   │   ├── router                    路由配置目录
-│   │   │   └── index.js                路由配置文件
-│   │   ├── store                     Vuex 状态管理目录
-│   │   │   ├── actions.js              状态变更动作
-│   │   │   ├── mutations.js            状态变更方法
-│   │   │   └── index.js                Vuex 入口文件
-│   │   ├── utils                     工具函数目录
-│   │   │   └── api.js                  封装 API 请求的工具函数
-│   │   ├── App.vue                     根 Vue 组件
-│   │   └── main.js                     前端应用启动入口
-│   ├── .env.development               开发环境配置文件
-│   ├── .env.production                生产环境配置文件
-│   ├── babel.config.js                 Babel 配置文件
-│   ├── package.json                    项目依赖管理文件
-│   └── vue.config.js                   Vue 项目配置文件
-├── docker                            Docker 相关配置目录
-│   ├── docker-compose.yml              Docker 编排文件
-│   ├── backend.Dockerfile              后端 Dockerfile
-│   └── frontend.Dockerfile             前端 Dockerfile
-├── tests                             测试代码目录
-│   ├── UnitTests                     单元测试目录
-│   │   ├── Backend                   后端单元测试目录
-│   │   │   ├── Controllers           控制器单元测试
-│   │   │   ├── Services              业务逻辑层单元测试
-│   │   │   └── Repositories          数据仓库单元测试
-│   │   └── Frontend                  前端单元测试目录
-│   │       ├── Components            Vue 组件单元测试
-│   │       └── Store                 Vuex 单元测试
-│   └── IntegrationTests              集成测试目录
-│       ├── Backend                   后端集成测试目录
-│       └── Frontend                  前端集成测试目录
-├── .gitignore                        Git 忽略文件配置
-├── README.md                          项目说明文档
-└── LICENSE                            项目许可证文件
+you_draw_i_guess_project/
+├── backend/
+│   ├── Controllers/
+│   │   ├── UserController.cs  // 用户相关接口，如注册、登录等
+│   │   ├── GameRoomController.cs  // 游戏房间相关接口，如创建、加入、获取列表等
+│   │   └── GameController.cs  // 游戏相关接口，如开始游戏、获取游戏状态等
+│   ├── Hubs/
+│   │   └── GameHub.cs  // 实现实时通信的 SignalR Hub
+│   ├── Models/
+│   │   ├── User.cs  // 用户模型
+│   │   ├── Player.cs  // 玩家模型
+│   │   ├── GameRoom.cs  // 游戏房间模型
+│   │   ├── Game.cs  // 游戏模型
+│   │   ├── Word.cs  // 词汇模型
+│   │   ├── ChatMessage.cs  // 聊天消息模型
+│   │   ├── GameHistory.cs  // 游戏历史记录模型
+│   │   ├── GameStats.cs  // 游戏统计信息模型
+│   │   ├── GameConfig.cs  // 游戏配置模型
+│   │   ├── Stroke.cs  // 笔触模型
+│   │   └── Point.cs  // 坐标点模型
+│   ├── Repositories/
+│   │   ├── GameRepository.cs  // 游戏房间数据访问层
+│   │   └── WordRepository.cs  // 词汇数据访问层（可根据需要扩展）
+│   ├── Services/
+│   │   ├── UserService.cs  // 用户相关业务逻辑处理
+│   │   ├── GameRoomService.cs  // 游戏房间相关业务逻辑处理
+│   │   ├── GameService.cs  // 游戏相关业务逻辑处理
+│   │   └── WordManager.cs  // 词汇管理服务
+│   ├── you_draw_i_guess.csproj  // 项目文件
+│   └── appsettings.json  // 配置文件，包含数据库连接字符串等
+├── frontend/
+│   ├── public/
+│   │   └── index.html  // 项目入口 HTML 文件
+│   ├── src/
+│   │   ├── App.vue  // 根组件
+│   │   ├── main.js  // 应用入口 JavaScript 文件
+│   │   ├── router/
+│   │   │   ├── index.js  // 路由配置文件
+│   │   │   └── guards.js  // 路由守卫文件
+│   │   ├── store/
+│   │   │   ├── index.js  // Vuex 状态管理文件
+│   │   │   ├── modules/
+│   │   │   │   ├── user.js  // 用户相关状态模块
+│   │   │   │   ├── gameRoom.js  // 游戏房间相关状态模块
+│   │   │   │   └── game.js  // 游戏相关状态模块
+│   │   ├── components/
+│   │   │   ├── auth/
+│   │   │   │   ├── UserLogin.vue  // 用户登录组件
+│   │   │   │   └── UserRegister.vue  // 用户注册组件
+│   │   │   ├── game/
+│   │   │   │   ├── DrawingBoard.vue  // 游戏画板组件
+│   │   │   │   ├── GuessWord.vue  // 猜词组件
+│   │   │   │   ├── GameResult.vue  // 游戏结果展示组件
+│   │   │   │   └── Game.vue  // 游戏主组件，包含游戏流程控制
+│   │   │   ├── gameRoom/
+│   │   │   │   ├── GameRoomList.vue  // 游戏房间列表组件
+│   │   │   │   ├── GameRoomCreate.vue  // 创建游戏房间组件
+│   │   │   │   ├── GameRoomDetail.vue  // 游戏房间详情组件
+│   │   │   │   └── Chat.vue  // 游戏房间内聊天组件
+│   │   │   └── layout/
+│   │   │   │   ├── AppHeader.vue  // 应用头部组件
+│   │   │   │   └── AppFooter.vue  // 应用底部组件
+│   │   ├── views/
+│   │   │   ├── LoginPage.vue  // 登录页
+│   │   │   ├── RegisterPage.vue  // 注册页
+│   │   │   ├── HomePage.vue  // 主页
+│   │   │   └── GamePage.vue  // 游戏页
+│   │   ├── services/
+│   │   │   ├── apiService.js  // 封装的 API 请求文件，处理与后端的 HTTP 通信
+│   │   │   └── socketService.js  // 封装的实时通信文件，处理 WebSocket 或 SignalR 通信
+│   │   └── styles/
+│   │       └── global.css  // 全局样式文件
+│   ├── package.json  // 项目依赖管理文件
+│   └── vue.config.js  // Vue 项目配置文件（可根据需要配置）
+├── database/
+│   ├── migrations/  // 数据库迁移文件目录，用于记录数据库结构的变更
+│   │   └── // 具体的迁移文件，如创建用户表、游戏房间表等的 SQL 文件
+│   └── you_draw_i_guess.db  // 数据库文件（如果使用 SQLite 等嵌入式数据库）
+├── tests/
+│   ├── backend/
+│   │   ├── UnitTests/  // 后端单元测试目录
+│   │   │   ├── UserControllerTests.cs  // 用户控制器单元测试
+│   │   │   ├── GameRoomControllerTests.cs  // 游戏房间控制器单元测试
+│   │   │   ├── GameServiceTests.cs  // 游戏服务单元测试
+│   │   │   └── // 其他后端类的单元测试文件
+│   │   └── IntegrationTests/  // 后端集成测试目录
+│   │       ├── GameHubIntegrationTests.cs  // GameHub 的集成测试
+│   │       └── // 其他涉及多个类或模块的集成测试文件
+│   └── frontend/
+│       ├── UnitTests/  // 前端单元测试目录
+│       │   ├── UserLoginComponentTests.js  // 用户登录组件单元测试
+│       │   ├── DrawingBoardComponentTests.js  // 游戏画板组件单元测试
+│       │   └── // 其他前端组件的单元测试文件
+│       └── E2ETests/  // 前端端到端测试目录
+│           ├── GameFlowE2ETests.js  // 游戏流程的端到端测试
+│           └── // 其他涉及整个应用流程的端到端测试文件
+└── README.md  // 项目说明文档，包含项目介绍、安装指南、使用方法等
