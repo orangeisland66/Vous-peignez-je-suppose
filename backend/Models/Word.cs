@@ -1,4 +1,4 @@
-namespace Models.Word
+namespace backend.Models.Word
 {
     public class Word
 {
