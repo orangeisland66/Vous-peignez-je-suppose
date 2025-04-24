@@ -1,4 +1,4 @@
-namespace Models.ChatMessage
+namespace backend.Models.ChatMessage
 {
 public class ChatMessage
 {

@@ -1,4 +1,4 @@
-namespace Models.Point
+namespace backend.Models.Point
 {
     public class Point
 {

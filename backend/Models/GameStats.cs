@@ -1,4 +1,4 @@
-namespace Models.GameStats
+namespace backend.Models.GameStats
 {
     public class GameStats
 {

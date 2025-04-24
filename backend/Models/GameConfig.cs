@@ -1,4 +1,4 @@
-namespace Models.GameConfig
+namespace backend.Models.GameConfig
 {
     public class GameConfig
 {

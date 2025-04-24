@@ -1,4 +1,4 @@
-namespace Models.GameHistory
+namespace backend.Models.GameHistory
 {
     public class GameHistory
 {
