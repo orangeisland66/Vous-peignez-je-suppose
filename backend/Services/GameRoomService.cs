@@ -4,14 +4,16 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Data;
+
 
 namespace backend.Services
 {
     public class GameRoomService
     {
-        private readonly DbContext _context;
+        private readonly OurDbContext _context;
 
-        public GameRoomService(DbContext context)
+        public GameRoomService(OurDbContext context)
         {
             _context = context;
         }
@@ -120,13 +122,16 @@ namespace backend.Services
                 return false;
             }
 
-            if (gameRoom.status!= "waiting")
+            if (gameRoom.status!= RoomStatus.Waiting)
+            {
+                return false;
+            }
             {
                 return false;
             }
 
             // 可以在这里添加开始游戏的其他逻辑，例如初始化游戏配置等
-            gameRoom.status = "playing";
+            gameRoom.status = RoomStatus.Playing;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -144,13 +149,16 @@ namespace backend.Services
                 return false;
             }
 
-            if (gameRoom.status!= "playing")
+            if (gameRoom.status!= RoomStatus.Playing)
+            {
+                return false;
+            }
             {
                 return false;
             }
 
             // 可以在这里添加结束游戏的其他逻辑，例如保存游戏结果等
-            gameRoom.status = "ended";
+            gameRoom.status = RoomStatus.Closed;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -168,12 +176,18 @@ namespace backend.Services
                 return false;
             }
 
-            if (gameRoom.status!= "playing")
+            if (gameRoom.status!= RoomStatus.Playing)
+            {
+                return false;
+            }
+            {
+                return false;
+            }
             {
                 return false;
             }
 
-            gameRoom.status = "paused";
+            gameRoom.status =RoomStatus.Waiting;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -191,12 +205,12 @@ namespace backend.Services
                 return false;
             }
 
-            if (gameRoom.status!= "paused")
+            if (gameRoom.status!= RoomStatus.Waiting)
             {
                 return false;
             }
 
-            gameRoom.status = "playing";
+            gameRoom.status = RoomStatus.Playing;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -276,5 +290,14 @@ namespace backend.Services
             await _context.SaveChangesAsync();
             return true;
         }
+        
+        public async Task<GameRoom> GetRoomDetailsAsync(int roomId)
+        {
+            return await _context.GameRooms
+               .Include(gr => gr.players)
+               .Include(gr => gr.chatHistory)
+               .FirstOrDefaultAsync(gr => gr.id == roomId);
+        }
+
     }
 }

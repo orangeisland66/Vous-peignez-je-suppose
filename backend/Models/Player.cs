@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using backend;
 
 namespace backend.Models
 {

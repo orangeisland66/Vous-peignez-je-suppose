@@ -60,18 +60,18 @@ namespace backend.Models
         Closed = 4      // 游戏被关闭
     }
 
-    // 游戏历史记录类
-    public class GameHistory
-    {
-        public int Round { get; set; } // 当前轮次
-        public string Word { get; set; } // 本轮词汇
-        public List<PlayerRoundHistory> PlayerHistories { get; set; } // 本轮玩家历史（得分、猜词等）
+    // // 游戏历史记录类
+    // public class GameHistory
+    // {
+    //     public int Round { get; set; } // 当前轮次
+    //     public string Word { get; set; } // 本轮词汇
+    //     public List<PlayerRoundHistory> PlayerHistories { get; set; } // 本轮玩家历史（得分、猜词等）
 
-        public GameHistory()
-        {
-            PlayerHistories = new List<PlayerRoundHistory>();
-        }
-    }
+    //     public GameHistory()
+    //     {
+    //         PlayerHistories = new List<PlayerRoundHistory>();
+    //     }
+    // }
 
     // 玩家轮次历史记录
     public class PlayerRoundHistory

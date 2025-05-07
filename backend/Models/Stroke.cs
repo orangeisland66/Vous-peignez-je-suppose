@@ -1,4 +1,4 @@
-namespace backend.Models.Stroke
+namespace backend.Models
 {
 public class Stroke
 {

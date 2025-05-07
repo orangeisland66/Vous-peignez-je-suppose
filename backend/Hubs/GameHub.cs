@@ -45,7 +45,7 @@ namespace backend.Hubs
         public async Task PlayerDraw(int roomId, Stroke stroke)
         {
             var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
-            if (room == null || room.Status != RoomStatus.Playing)
+            if (room == null || room.status != RoomStatus.Playing)
             {
                 await Clients.Caller.SendAsync("InvalidRoomStatus", "当前房间无法作画");
                 return;
@@ -59,7 +59,7 @@ namespace backend.Hubs
         public async Task PlayerGuess(int roomId, string guessedWord)
         {
             var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
-            if (room == null || room.Status != RoomStatus.Playing)
+            if (room == null || room.status != RoomStatus.Playing)
             {
                 await Clients.Caller.SendAsync("InvalidRoomStatus", "当前房间无法猜词");
                 return;
@@ -81,7 +81,7 @@ namespace backend.Hubs
         public async Task StartGame(int roomId)
         {
             var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
-            if (room == null || room.Status != RoomStatus.Waiting)
+            if (room == null || room.status != RoomStatus.Waiting)
             {
                 await Clients.Caller.SendAsync("InvalidRoomStatus", "房间状态无法开始游戏");
                 return;
@@ -94,7 +94,7 @@ namespace backend.Hubs
         public async Task NextRound(int roomId)
         {
             var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
-            if (room == null || room.Status != RoomStatus.Playing)
+            if (room == null || room.status != RoomStatus.Playing)
             {
                 await Clients.Caller.SendAsync("InvalidRoomStatus", "当前房间无法进入下一轮");
                 return;
@@ -107,7 +107,7 @@ namespace backend.Hubs
         public async Task EndGame(int roomId, Dictionary<string, int> scores)
         {
             var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
-            if (room == null || room.Status != RoomStatus.Completed)
+            if (room == null || room.status != RoomStatus.Completed)
             {
                 await Clients.Caller.SendAsync("InvalidRoomStatus", "当前房间无法结束游戏");
                 return;

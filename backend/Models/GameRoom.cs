@@ -2,50 +2,38 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace you_draw_i_guess_project.Models
+namespace backend.Models
 {
-    public class GameRoom
+      public class GameRoom
     {
-        // 房间唯一标识符
-        public int Id { get; set; }
-
-        // 房间名称，最大长度100
-        [Required]
-        [StringLength(100)]
-        public string RoomName { get; set; }
-
-        // 房间的创建时间
-        public DateTime CreatedAt { get; set; }
-
-        // 房间当前的状态
-        public RoomStatus Status { get; set; }
-
-        // 游戏的开始时间
-        public DateTime? GameStartedAt { get; set; }
-
-        // 当前轮次
-        public int CurrentRound { get; set; }
-
-        // 房间内的玩家列表
-        public List<Player> Players { get; set; }
-
-        // 当前游戏的词汇（可选，基于实际需求，可能是从词库中获取）
-        public string CurrentWord { get; set; }
-
-        // 房间的最大玩家人数
-        public int MaxPlayers { get; set; }
-
-        // 游戏的总轮次
-        public int MaxRounds { get; set; }
+        [Key]
+        public int id { get; set; }
+        public string name { get; set; }
+        public RoomStatus status { get; set; }
+        public string gameMode { get; set; }
+        public bool isPrivate { get; set; }
+        public string roomPassword { get; set; }
+        public List<Player> players { get; set; }
+        public List<ChatMessage> chatHistory { get; set; }
+        public GameConfig gameConfig { get; set; }
 
         public GameRoom()
         {
-            Players = new List<Player>();
-            CreatedAt = DateTime.UtcNow;
-            Status = RoomStatus.Waiting;  // 默认房间状态为等待
-            CurrentRound = 1;  // 默认从第1轮开始
-            MaxPlayers = 10;  // 默认最大玩家人数为10
-            MaxRounds = 5;  // 默认最大轮次数为5
+             // 初始化玩家列表
+            players = new List<Player>();
+            // 初始化聊天记录列表
+            chatHistory = new List<ChatMessage>();
+            // 设置默认的房间状态为等待玩家加入
+            status = RoomStatus.Waiting;
+            // 设置默认的游戏模式（这里假设默认模式为 "五猜一画"）
+            gameMode = "五猜一画";
+            // 假设默认房间不是私密的
+            isPrivate = false;
+            // 假设默认房间密码为空字符串
+            roomPassword = "";
+            // 初始化游戏配置对象（这里可以根据具体需求进一步完善配置项）
+            gameConfig = new GameConfig();
+
         }
     }
 

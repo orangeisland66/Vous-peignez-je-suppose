@@ -1051,23 +1051,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\huawei\\.nuget\\packages\\": {},
-    "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\86177\\.nuget\\packages\\": {},
+    "D:\\VS tools\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\huawei\\Documents\\GitHub\\Vous-peignez-je-suppose\\tests\\backend\\UnitTests\\UnitTests.csproj",
+      "projectUniqueName": "C:\\Users\\86177\\OneDrive - whu.edu.cn\\桌面\\Vous peignez, je suppose\\tests\\backend\\UnitTests\\UnitTests.csproj",
       "projectName": "UnitTests",
-      "projectPath": "C:\\Users\\huawei\\Documents\\GitHub\\Vous-peignez-je-suppose\\tests\\backend\\UnitTests\\UnitTests.csproj",
-      "packagesPath": "C:\\Users\\huawei\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\huawei\\Documents\\GitHub\\Vous-peignez-je-suppose\\tests\\backend\\UnitTests\\obj\\",
+      "projectPath": "C:\\Users\\86177\\OneDrive - whu.edu.cn\\桌面\\Vous peignez, je suppose\\tests\\backend\\UnitTests\\UnitTests.csproj",
+      "packagesPath": "C:\\Users\\86177\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\86177\\OneDrive - whu.edu.cn\\桌面\\Vous peignez, je suppose\\tests\\backend\\UnitTests\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
-        "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        "D:\\VS tools\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\huawei\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\86177\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -1094,7 +1094,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.200"
+      "SdkAnalysisLevel": "9.0.100"
     },
     "frameworks": {
       "net9.0": {
@@ -1139,7 +1139,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.103/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

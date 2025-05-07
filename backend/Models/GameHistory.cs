@@ -1,9 +1,10 @@
-namespace backend.Models.GameHistory
+using backend.Models;
+namespace backend.Models
 {
     public class GameHistory
 {
     private User[] players;
-    private Map scores;
+    private Dictionary<int, int> scores;
     private Word[] usedWords;
     private DateTime startTime;
     private DateTime endTime;
