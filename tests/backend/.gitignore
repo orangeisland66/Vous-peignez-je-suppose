@@ -1,0 +1,4 @@
+tests/backend/IntegrationTests/bin/
+tests/backend/IntegrationTests/obj/
+tests/backend/UnitTests/bin/
+tests/backend/UnitTests/obj/
