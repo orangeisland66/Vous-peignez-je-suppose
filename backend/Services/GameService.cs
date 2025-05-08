@@ -11,10 +11,12 @@ namespace backend.Services
     public class GameService
     {
         private readonly OurDbContext _context;
+        private readonly WordManager _wordManager;
 
-        public GameService(OurDbContext context)
+        public GameService(OurDbContext context, WordManager wordManager)
         {
             _context = context;
+            _wordManager = wordManager;
         }
 
         /// <summary>
@@ -24,21 +26,26 @@ namespace backend.Services
         /// <returns>如果成功开始游戏轮次返回 true，否则返回 false</returns>
         public async Task<bool> StartRoundAsync(int gameId)
         {
-            var game = await _context.Games.FindAsync(gameId);
-            if (game == null)
+            var game = await _context.Games
+                .Include(g => g.GameRoom)
+                .FirstOrDefaultAsync(g => g.Id == gameId);
+
+            if (game == null || game.Status != GameStatus.Waiting)
             {
                 return false;
             }
 
-            // 检查游戏是否可以开始新的一轮（例如当前轮次是否已结束等条件）
-            if (game.CurrentRound >= game.MaxRounds)
+            // 获取随机词汇
+            var word = await _wordManager.GetRandomWordAsync();
+            if (word == null)
             {
                 return false;
             }
 
-            // 可以在这里添加开始游戏轮次的其他逻辑，例如重置本轮的相关数据等
-            game.CurrentRound++;
+            // 更新游戏状态
+            game.CurrentWord = word.Content;
             game.Status = GameStatus.Playing;
+            game.GameStartedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return true;
@@ -102,8 +109,9 @@ namespace backend.Services
         public async Task<Game> GetGameStatusAsync(int gameId)
         {
             return await _context.Games
-             .Include(g => g.GameRoom)
-             .FirstOrDefaultAsync(g => g.Id == gameId);
+                .Include(g => g.GameRoom)
+                .ThenInclude(gr => gr.Players)
+                .FirstOrDefaultAsync(g => g.Id == gameId);
         }
 
         /// <summary>
@@ -148,5 +156,166 @@ namespace backend.Services
 
             return await query.OrderBy(w => Guid.NewGuid()).FirstOrDefaultAsync();
         }
+
+        /// <summary>
+        /// 处理玩家画图
+        /// </summary>
+        public async Task<bool> HandleDrawingAsync(int gameId, int playerId, Stroke stroke)
+        {
+            var game = await _context.Games
+                .Include(g => g.GameRoom)
+                .FirstOrDefaultAsync(g => g.Id == gameId);
+
+            if (game == null || game.Status != GameStatus.Playing)
+            {
+                return false;
+            }
+
+            // 检查是否是当前作画玩家
+            if (game.CurrentDrawingPlayerId != playerId)
+            {
+                return false;
+            }
+
+            // 保存画图数据
+            var drawingData = new DrawingData
+            {
+                GameId = gameId,
+                PlayerId = playerId,
+                Stroke = stroke,
+                Timestamp = DateTime.UtcNow
+            };
+
+            _context.DrawingData.Add(drawingData);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        /// <summary>
+        /// 处理玩家猜词
+        /// </summary>
+        public async Task<GuessResult> HandleGuessAsync(int gameId, int playerId, string guessedWord)
+        {
+            var game = await _context.Games
+                .Include(g => g.GameRoom)
+                .FirstOrDefaultAsync(g => g.Id == gameId);
+
+            if (game == null || game.Status != GameStatus.Playing)
+            {
+                return new GuessResult { Success = false, Message = "游戏状态不正确" };
+            }
+
+            // 检查是否是当前作画玩家
+            if (game.CurrentDrawingPlayerId == playerId)
+            {
+                return new GuessResult { Success = false, Message = "作画玩家不能猜词" };
+            }
+
+            // 检查是否已经猜对
+            var player = await _context.Players.FindAsync(playerId);
+            if (player.HasGuessedCorrectly)
+            {
+                return new GuessResult { Success = false, Message = "已经猜对了" };
+            }
+
+            // 检查猜词是否正确
+            bool isCorrect = string.Equals(guessedWord, game.CurrentWord, StringComparison.OrdinalIgnoreCase);
+
+            if (isCorrect)
+            {
+                // 更新玩家状态
+                player.HasGuessedCorrectly = true;
+                player.Score += CalculateScore(game);
+
+                // 检查是否所有玩家都已猜对
+                var allPlayersGuessed = await CheckAllPlayersGuessedAsync(gameId);
+                if (allPlayersGuessed)
+                {
+                    game.Status = GameStatus.Completed;
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            return new GuessResult
+            {
+                Success = true,
+                IsCorrect = isCorrect,
+                Message = isCorrect ? "猜对了！" : "猜错了，继续加油！"
+            };
+        }
+
+        /// <summary>
+        /// 计算得分
+        /// </summary>
+        private int CalculateScore(Game game)
+        {
+            // 基础分数
+            int baseScore = 100;
+
+            // 根据游戏时间计算时间加成
+            var timeElapsed = DateTime.UtcNow - game.GameStartedAt.Value;
+            double timeBonus = Math.Max(0, 1 - (timeElapsed.TotalSeconds / 60)); // 每分钟减少1%的分数
+
+            // 计算最终得分
+            return (int)(baseScore * (1 + timeBonus));
+        }
+
+        /// <summary>
+        /// 检查是否所有玩家都已猜对
+        /// </summary>
+        private async Task<bool> CheckAllPlayersGuessedAsync(int gameId)
+        {
+            var game = await _context.Games
+                .Include(g => g.GameRoom)
+                .ThenInclude(gr => gr.Players)
+                .FirstOrDefaultAsync(g => g.Id == gameId);
+
+            if (game == null)
+            {
+                return false;
+            }
+
+            // 排除作画玩家
+            var guessingPlayers = game.GameRoom.Players
+                .Where(p => p.Id != game.CurrentDrawingPlayerId)
+                .ToList();
+
+            // 检查是否所有猜词玩家都已猜对
+            return guessingPlayers.All(p => p.HasGuessedCorrectly);
+        }
+
+        /// <summary>
+        /// 获取当前轮次的画图数据
+        /// </summary>
+        public async Task<List<DrawingData>> GetCurrentRoundDrawingsAsync(int gameId)
+        {
+            return await _context.DrawingData
+                .Where(d => d.GameId == gameId)
+                .OrderBy(d => d.Timestamp)
+                .ToListAsync();
+        }
+    }
+
+    /// <summary>
+    /// 画图数据模型
+    /// </summary>
+    public class DrawingData
+    {
+        public int Id { get; set; }
+        public int GameId { get; set; }
+        public int PlayerId { get; set; }
+        public Stroke Stroke { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+
+    /// <summary>
+    /// 猜词结果模型
+    /// </summary>
+    public class GuessResult
+    {
+        public bool Success { get; set; }
+        public bool IsCorrect { get; set; }
+        public string Message { get; set; }
     }
 }
