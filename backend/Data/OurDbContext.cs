@@ -18,6 +18,9 @@ namespace backend.Data
         public DbSet<Player> Players { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<DrawingData> DrawingData { get; set; }
+        public DbSet<GameRoundScore> GameRoundScores { get; set; }
+
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -59,6 +62,11 @@ namespace backend.Data
                 .HasOne(d => d.Player)
                 .WithMany()
                 .HasForeignKey(d => d.PlayerId);
+
+            modelBuilder.Entity<GameRoundScore>()
+                .HasOne(grs => grs.Game)
+                .WithMany(g => g.RoundScores)
+                .HasForeignKey(grs => grs.GameId);
         }
 
         public async Task<int> SaveChangesAsync()
