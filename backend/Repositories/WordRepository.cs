@@ -2,14 +2,15 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Data;
 
 namespace backend.Repositories
 {
     public class WordRepository
     {
-        private readonly DbContext _context;
+        private readonly OurDbContext _context;
 
-        public WordRepository(DbContext context)
+        public WordRepository(OurDbContext context)
         {
             _context = context;
         }
