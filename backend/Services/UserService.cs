@@ -4,14 +4,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Data;
 
 namespace backend.Services
 {
     public class UserService
     {
-        private readonly DbContext _context;
+        private readonly OurDbContext _context;
 
-        public UserService(DbContext context)
+        public UserService(OurDbContext context)
         {
             _context = context;
         }

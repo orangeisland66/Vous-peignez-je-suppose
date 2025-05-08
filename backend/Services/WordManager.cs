@@ -4,14 +4,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Data;
 
 namespace backend.Services
 {
     public class WordManager
     {
-        private readonly DbContext _context;
+        private readonly OurDbContext _context;
 
-        public WordManager(DbContext context)
+        public WordManager(OurDbContext context)
         {
             _context = context;
         }
