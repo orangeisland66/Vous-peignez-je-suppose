@@ -4,36 +4,28 @@ using System.ComponentModel.DataAnnotations;
 
 namespace backend.Models
 {
-      public class GameRoom
+    public class GameRoom
     {
         [Key]
-        public int id { get; set; }
-        public string name { get; set; }
-        public RoomStatus status { get; set; }
-        public string gameMode { get; set; }
-        public bool isPrivate { get; set; }
-        public string roomPassword { get; set; }
-        public List<Player> players { get; set; }
-        public List<ChatMessage> chatHistory { get; set; }
-        public GameConfig gameConfig { get; set; }
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public RoomStatus Status { get; set; }
+        public string GameMode { get; set; }
+        public bool IsPrivate { get; set; }
+        public string RoomPassword { get; set; }
+        public List<Player> Players { get; set; }
+        public List<ChatMessage> ChatHistory { get; set; }
+        public GameConfig GameConfig { get; set; }
 
         public GameRoom()
         {
-             // 初始化玩家列表
-            players = new List<Player>();
-            // 初始化聊天记录列表
-            chatHistory = new List<ChatMessage>();
-            // 设置默认的房间状态为等待玩家加入
-            status = RoomStatus.Waiting;
-            // 设置默认的游戏模式（这里假设默认模式为 "五猜一画"）
-            gameMode = "五猜一画";
-            // 假设默认房间不是私密的
-            isPrivate = false;
-            // 假设默认房间密码为空字符串
-            roomPassword = "";
-            // 初始化游戏配置对象（这里可以根据具体需求进一步完善配置项）
-            gameConfig = new GameConfig();
-
+            Players = new List<Player>();
+            ChatHistory = new List<ChatMessage>();
+            Status = RoomStatus.Waiting;
+            GameMode = "五猜一画";
+            IsPrivate = false;
+            RoomPassword = "";
+            GameConfig = new GameConfig();
         }
     }
 

@@ -4,14 +4,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Data;
 
 namespace backend.Services
 {
     public class GameService
     {
-        private readonly DbContext _context;
+        private readonly OurDbContext _context;
 
-        public GameService(DbContext context)
+        public GameService(OurDbContext context)
         {
             _context = context;
         }
@@ -30,15 +31,14 @@ namespace backend.Services
             }
 
             // 检查游戏是否可以开始新的一轮（例如当前轮次是否已结束等条件）
-            if (game.currentRound >= game.maxRounds)
+            if (game.CurrentRound >= game.MaxRounds)
             {
                 return false;
             }
 
             // 可以在这里添加开始游戏轮次的其他逻辑，例如重置本轮的相关数据等
-            game.currentRound++;
-            game.remainingTime = game.gameConfig.roundTimeLimit;
-            game.gameStatus = "playing";
+            game.CurrentRound++;
+            game.Status = GameStatus.Playing;
 
             await _context.SaveChangesAsync();
             return true;
@@ -58,13 +58,13 @@ namespace backend.Services
             }
 
             // 检查游戏轮次是否可以结束（例如时间是否用完等条件）
-            if (game.remainingTime > 0)
+            if (game.Status != GameStatus.Playing)
             {
                 return false;
             }
 
             // 可以在这里添加结束游戏轮次的其他逻辑，例如计算本轮得分等
-            game.gameStatus = "round_ended";
+            game.Status = GameStatus.Completed;
 
             await _context.SaveChangesAsync();
             return true;
@@ -88,7 +88,7 @@ namespace backend.Services
             int score = correctCount * 10; // 示例规则：每次猜对得 10 分
 
             // 更新游戏得分
-            game.drawerScore += score;
+            game.RoundScores[game.CurrentRound] = score;
 
             await _context.SaveChangesAsync();
             return score;
@@ -102,8 +102,8 @@ namespace backend.Services
         public async Task<Game> GetGameStatusAsync(int gameId)
         {
             return await _context.Games
-             .Include(g => g.gameConfig)
-             .FirstOrDefaultAsync(g => g.id == gameId);
+             .Include(g => g.GameRoom)
+             .FirstOrDefaultAsync(g => g.Id == gameId);
         }
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace backend.Services
         /// <param name="gameId">游戏 ID</param>
         /// <param name="status">新的游戏状态</param>
         /// <returns>如果成功更新游戏状态返回 true，否则返回 false</returns>
-        public async Task<bool> UpdateGameStatusAsync(int gameId, string status)
+        public async Task<bool> UpdateGameStatusAsync(int gameId, GameStatus status)
         {
             var game = await _context.Games.FindAsync(gameId);
             if (game == null)
@@ -120,7 +120,7 @@ namespace backend.Services
                 return false;
             }
 
-            game.gameStatus = status;
+            game.Status = status;
 
             await _context.SaveChangesAsync();
             return true;
@@ -138,12 +138,12 @@ namespace backend.Services
 
             if (!string.IsNullOrEmpty(category))
             {
-                query = query.Where(w => w.category == category);
+                query = query.Where(w => w.Category == category);
             }
 
             if (!string.IsNullOrEmpty(difficulty))
             {
-                query = query.Where(w => w.difficulty == difficulty);
+                query = query.Where(w => w.Difficulty == difficulty);
             }
 
             return await query.OrderBy(w => Guid.NewGuid()).FirstOrDefaultAsync();

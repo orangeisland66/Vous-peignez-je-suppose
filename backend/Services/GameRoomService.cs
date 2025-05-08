@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.Data;
 
-
 namespace backend.Services
 {
     public class GameRoomService
@@ -34,9 +33,12 @@ namespace backend.Services
         /// 获取所有游戏房间列表
         /// </summary>
         /// <returns>包含所有游戏房间的列表</returns>
-        public async Task<List<GameRoom>> GetAllGameRoomsAsync()
+        public async Task<List<GameRoom>> GetAllRoomsAsync()
         {
-            return await _context.GameRooms.ToListAsync();
+            return await _context.GameRooms
+                .Include(gr => gr.Players)
+                .Include(gr => gr.ChatHistory)
+                .ToListAsync();
         }
 
         /// <summary>
@@ -44,42 +46,39 @@ namespace backend.Services
         /// </summary>
         /// <param name="roomId">游戏房间的 ID</param>
         /// <returns>对应的游戏房间对象，如果不存在则返回 null</returns>
-        public async Task<GameRoom> GetGameRoomByIdAsync(int roomId)
+        public async Task<GameRoom> GetRoomDetailsAsync(int roomId)
         {
             return await _context.GameRooms
-               .Include(gr => gr.players)
-               .Include(gr => gr.chatHistory)
-               .FirstOrDefaultAsync(gr => gr.id == roomId);
+                .Include(gr => gr.Players)
+                .Include(gr => gr.ChatHistory)
+                .FirstOrDefaultAsync(gr => gr.Id == roomId);
         }
 
         /// <summary>
         /// 用户加入游戏房间
         /// </summary>
         /// <param name="roomId">房间 ID</param>
-        /// <param name="user">要加入房间的用户</param>
-        /// <param name="password">房间密码（如果房间是私密的）</param>
+        /// <param name="player">要加入房间的玩家</param>
         /// <returns>加入成功返回 true，否则返回 false</returns>
-        public async Task<bool> JoinRoomAsync(int roomId, User user, string password = null)
+        public async Task<bool> JoinRoomAsync(int roomId, Player player)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
+            var gameRoom = await GetRoomDetailsAsync(roomId);
             if (gameRoom == null)
             {
                 return false;
             }
 
-            if (gameRoom.isPrivate && gameRoom.roomPassword!= password)
+            if (gameRoom.IsPrivate && gameRoom.RoomPassword != player.Password)
             {
                 return false;
             }
 
-            // 检查用户是否已在房间内
-            if (gameRoom.players.Any(p => p.id == user.id))
+            if (gameRoom.Players.Any(p => p.Id == player.Id))
             {
                 return false;
             }
 
-            var player = new Player { id = user.id, username = user.username, role = "未分配" };
-            gameRoom.players.Add(player);
+            gameRoom.Players.Add(player);
             await _context.SaveChangesAsync();
             return true;
         }
@@ -88,23 +87,23 @@ namespace backend.Services
         /// 用户离开游戏房间
         /// </summary>
         /// <param name="roomId">房间 ID</param>
-        /// <param name="user">要离开房间的用户</param>
+        /// <param name="playerId">要离开房间的玩家的 ID</param>
         /// <returns>离开成功返回 true，否则返回 false</returns>
-        public async Task<bool> LeaveRoomAsync(int roomId, User user)
+        public async Task<bool> LeaveRoomAsync(int roomId, int playerId)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
+            var gameRoom = await GetRoomDetailsAsync(roomId);
             if (gameRoom == null)
             {
                 return false;
             }
 
-            var playerToRemove = gameRoom.players.FirstOrDefault(p => p.id == user.id);
+            var playerToRemove = gameRoom.Players.FirstOrDefault(p => p.Id == playerId);
             if (playerToRemove == null)
             {
                 return false;
             }
 
-            gameRoom.players.Remove(playerToRemove);
+            gameRoom.Players.Remove(playerToRemove);
             await _context.SaveChangesAsync();
             return true;
         }
@@ -116,22 +115,13 @@ namespace backend.Services
         /// <returns>开始成功返回 true，否则返回 false</returns>
         public async Task<bool> StartGameAsync(int roomId)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
-            if (gameRoom == null)
+            var gameRoom = await GetRoomDetailsAsync(roomId);
+            if (gameRoom == null || gameRoom.Status != RoomStatus.Waiting)
             {
                 return false;
             }
 
-            if (gameRoom.status!= RoomStatus.Waiting)
-            {
-                return false;
-            }
-            {
-                return false;
-            }
-
-            // 可以在这里添加开始游戏的其他逻辑，例如初始化游戏配置等
-            gameRoom.status = RoomStatus.Playing;
+            gameRoom.Status = RoomStatus.Playing;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -143,22 +133,13 @@ namespace backend.Services
         /// <returns>结束成功返回 true，否则返回 false</returns>
         public async Task<bool> EndGameAsync(int roomId)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
-            if (gameRoom == null)
+            var gameRoom = await GetRoomDetailsAsync(roomId);
+            if (gameRoom == null || gameRoom.Status != RoomStatus.Playing)
             {
                 return false;
             }
 
-            if (gameRoom.status!= RoomStatus.Playing)
-            {
-                return false;
-            }
-            {
-                return false;
-            }
-
-            // 可以在这里添加结束游戏的其他逻辑，例如保存游戏结果等
-            gameRoom.status = RoomStatus.Closed;
+            gameRoom.Status = RoomStatus.Completed;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -170,24 +151,18 @@ namespace backend.Services
         /// <returns>暂停成功返回 true，否则返回 false</returns>
         public async Task<bool> PauseGameAsync(int roomId)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
+            var gameRoom = await GetRoomDetailsAsync(roomId);
             if (gameRoom == null)
             {
                 return false;
             }
 
-            if (gameRoom.status!= RoomStatus.Playing)
-            {
-                return false;
-            }
-            {
-                return false;
-            }
+            if (gameRoom.Status != RoomStatus.Playing)
             {
                 return false;
             }
 
-            gameRoom.status =RoomStatus.Waiting;
+            gameRoom.Status = RoomStatus.Waiting;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -199,18 +174,18 @@ namespace backend.Services
         /// <returns>恢复成功返回 true，否则返回 false</returns>
         public async Task<bool> ResumeGameAsync(int roomId)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
+            var gameRoom = await GetRoomDetailsAsync(roomId);
             if (gameRoom == null)
             {
                 return false;
             }
 
-            if (gameRoom.status!= RoomStatus.Waiting)
+            if (gameRoom.Status != RoomStatus.Waiting)
             {
                 return false;
             }
 
-            gameRoom.status = RoomStatus.Playing;
+            gameRoom.Status = RoomStatus.Playing;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -223,13 +198,13 @@ namespace backend.Services
         /// <returns>设置成功返回 true，否则返回 false</returns>
         public async Task<bool> SetGameConfigAsync(int roomId, GameConfig gameConfig)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
+            var gameRoom = await GetRoomDetailsAsync(roomId);
             if (gameRoom == null)
             {
                 return false;
             }
 
-            gameRoom.gameConfig = gameConfig;
+            gameRoom.GameConfig = gameConfig;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -242,13 +217,13 @@ namespace backend.Services
         /// <returns>发送成功返回 true，否则返回 false</returns>
         public async Task<bool> SendChatMessageAsync(int roomId, ChatMessage chatMessage)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
+            var gameRoom = await GetRoomDetailsAsync(roomId);
             if (gameRoom == null)
             {
                 return false;
             }
 
-            gameRoom.chatHistory.Add(chatMessage);
+            gameRoom.ChatHistory.Add(chatMessage);
             await _context.SaveChangesAsync();
             return true;
         }
@@ -261,13 +236,13 @@ namespace backend.Services
         /// <returns>设置成功返回 true，否则返回 false</returns>
         public async Task<bool> SetPrivateStatusAsync(int roomId, bool isPrivate)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
+            var gameRoom = await GetRoomDetailsAsync(roomId);
             if (gameRoom == null)
             {
                 return false;
             }
 
-            gameRoom.isPrivate = isPrivate;
+            gameRoom.IsPrivate = isPrivate;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -280,24 +255,15 @@ namespace backend.Services
         /// <returns>设置成功返回 true，否则返回 false</returns>
         public async Task<bool> SetRoomPasswordAsync(int roomId, string password)
         {
-            var gameRoom = await GetGameRoomByIdAsync(roomId);
+            var gameRoom = await GetRoomDetailsAsync(roomId);
             if (gameRoom == null)
             {
                 return false;
             }
 
-            gameRoom.roomPassword = password;
+            gameRoom.RoomPassword = password;
             await _context.SaveChangesAsync();
             return true;
         }
-        
-        public async Task<GameRoom> GetRoomDetailsAsync(int roomId)
-        {
-            return await _context.GameRooms
-               .Include(gr => gr.players)
-               .Include(gr => gr.chatHistory)
-               .FirstOrDefaultAsync(gr => gr.id == roomId);
-        }
-
     }
 }

@@ -1,10 +1,10 @@
 namespace backend.Models
 {
     public class Word
-{
-    private int id;
-    private string content;
-    private string category;
-    private string difficulty;
-}
+    {
+        public int Id { get; set; }
+        public string Content { get; set; }
+        public string Category { get; set; }
+        public string Difficulty { get; set; }
+    }
 }

@@ -1,11 +1,11 @@
 namespace backend.Models
 {
-public class Stroke
-{
-    private int id;
-    private Point[] coordinates;
-    private int brushSize;
-    private string color;
-}
+    public class Stroke
+    {
+        public int Id { get; set; }
+        public Point[] Coordinates { get; set; }
+        public int BrushSize { get; set; }
+        public string Color { get; set; }
+    }
 }
 

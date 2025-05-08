@@ -29,19 +29,19 @@ namespace backend.Controllers
         [HttpPost("create")]
         public async Task<IActionResult> CreateRoom([FromBody] GameRoom newRoom)
         {
-            if (newRoom == null || string.IsNullOrEmpty(newRoom.RoomName))
+            if (newRoom == null || string.IsNullOrEmpty(newRoom.Name))
             {
                 return BadRequest("房间信息不完整");
             }
 
             var result = await _gameRoomService.CreateRoomAsync(newRoom);
-            if (result.IsSuccess)
+            if (result != null)
             {
-                return Ok(new { Message = "房间创建成功", RoomId = result.RoomId });
+                return Ok(new { Message = "房间创建成功", RoomId = result.Id });
             }
             else
             {
-                return BadRequest(new { Message = result.ErrorMessage });
+                return BadRequest(new { Message = "房间创建失败" });
             }
         }
 
@@ -55,13 +55,13 @@ namespace backend.Controllers
             }
 
             var result = await _gameRoomService.JoinRoomAsync(roomId, player);
-            if (result.IsSuccess)
+            if (result)
             {
                 return Ok(new { Message = "成功加入房间", RoomId = roomId });
             }
             else
             {
-                return BadRequest(new { Message = result.ErrorMessage });
+                return BadRequest(new { Message = "加入房间失败" });
             }
         }
 
@@ -82,13 +82,13 @@ namespace backend.Controllers
         public async Task<IActionResult> StartGame(int roomId)
         {
             var result = await _gameRoomService.StartGameAsync(roomId);
-            if (result.IsSuccess)
+            if (result)
             {
                 return Ok(new { Message = "游戏已开始" });
             }
             else
             {
-                return BadRequest(new { Message = result.ErrorMessage });
+                return BadRequest(new { Message = "游戏开始失败" });
             }
         }
 
@@ -96,12 +96,12 @@ namespace backend.Controllers
         [HttpGet("status/{roomId}")]
         public async Task<IActionResult> GetGameStatus(int roomId)
         {
-            var status = await _gameRoomService.GetGameStatusAsync(roomId);
-            if (status == null)
+            var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
+            if (room == null)
             {
                 return NotFound(new { Message = "游戏状态不可用" });
             }
-            return Ok(status);
+            return Ok(new { Status = room.Status });
         }
 
         // 结束当前游戏并获取结果
@@ -109,13 +109,13 @@ namespace backend.Controllers
         public async Task<IActionResult> EndGame(int roomId)
         {
             var result = await _gameRoomService.EndGameAsync(roomId);
-            if (result.IsSuccess)
+            if (result)
             {
-                return Ok(new { Message = "游戏结束", Scores = result.Scores });
+                return Ok(new { Message = "游戏结束" });
             }
             else
             {
-                return BadRequest(new { Message = result.ErrorMessage });
+                return BadRequest(new { Message = "游戏结束失败" });
             }
         }
     }

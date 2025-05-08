@@ -26,14 +26,14 @@ namespace backend.Controllers
                 return BadRequest("用户信息不能为空");
             }
 
-            var result = await _userService.RegisterUserAsync(user);
-            if (result.IsSuccess)
+            try
             {
-                return Ok(new { Message = "注册成功" });
+                var result = await _userService.RegisterAsync(user);
+                return Ok(new { Message = "注册成功", UserId = result.Id });
             }
-            else
+            catch (ArgumentException ex)
             {
-                return BadRequest(new { Message = result.ErrorMessage });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
@@ -46,27 +46,73 @@ namespace backend.Controllers
                 return BadRequest("用户名和密码不能为空");
             }
 
-            var result = await _userService.LoginAsync(loginRequest.Username, loginRequest.Password);
-            if (result.IsSuccess)
+            var user = await _userService.LoginAsync(loginRequest.Username, loginRequest.Password);
+            if (user != null)
             {
-                return Ok(new { Message = "登录成功", Token = result.Token });
+                // 这里应该生成JWT token
+                return Ok(new { Message = "登录成功", UserId = user.Id });
             }
             else
             {
-                return Unauthorized(new { Message = result.ErrorMessage });
+                return Unauthorized(new { Message = "用户名或密码错误" });
             }
         }
 
         // 获取当前用户信息接口
-        [HttpGet("me")]
-        public IActionResult GetCurrentUser()
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetUserProfile(int userId)
         {
-            var currentUser = _userService.GetCurrentUser();
-            if (currentUser == null)
+            try
             {
-                return Unauthorized(new { Message = "用户未登录" });
+                var totalScore = await _userService.GetTotalScore(userId);
+                return Ok(new { TotalScore = totalScore });
             }
-            return Ok(currentUser);
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+        }
+
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] User user)
+        {
+            try
+            {
+                var updatedUser = await _userService.UpdateProfileAsync(user);
+                return Ok(new { Message = "资料更新成功", User = updatedUser });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpPut("role")]
+        public async Task<IActionResult> SetUserRole(int userId, [FromBody] string role)
+        {
+            try
+            {
+                await _userService.SetUserRole(userId, role);
+                return Ok(new { Message = "角色设置成功" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpPut("online-status")]
+        public async Task<IActionResult> SetOnlineStatus(int userId, [FromBody] bool status)
+        {
+            try
+            {
+                await _userService.SetOnlineStatus(userId, status);
+                return Ok(new { Message = "在线状态更新成功" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
     }
 

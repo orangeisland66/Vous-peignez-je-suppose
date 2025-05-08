@@ -4,14 +4,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Data;
 
 namespace backend.Services
 {
     public class UserService
     {
-        private readonly DbContext _context;
+        private readonly OurDbContext _context;
 
-        public UserService(DbContext context)
+        public UserService(OurDbContext context)
         {
             _context = context;
         }
@@ -20,7 +21,7 @@ namespace backend.Services
         public async Task<User> RegisterAsync(User user)
         {
             // 检查用户名是否已存在
-            if (await _context.Users.AnyAsync(u => u.username == user.username))
+            if (await _context.Users.AnyAsync(u => u.Username == user.Username))
             {
                 throw new ArgumentException("用户名已存在");
             }
@@ -34,22 +35,22 @@ namespace backend.Services
         // 用户登录
         public async Task<User> LoginAsync(string username, string passwordHash)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.username == username && u.passwordHash == passwordHash);
+            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username && u.PasswordHash == passwordHash);
         }
 
         // 更新用户资料
         public async Task<User> UpdateProfileAsync(User user)
         {
-            var existingUser = await _context.Users.FindAsync(user.id);
+            var existingUser = await _context.Users.FindAsync(user.Id);
             if (existingUser == null)
             {
                 throw new ArgumentException("用户不存在");
             }
 
-            existingUser.username = user.username;
-            existingUser.passwordHash = user.passwordHash;
+            existingUser.Username = user.Username;
+            existingUser.PasswordHash = user.PasswordHash;
             existingUser.totalScore = user.totalScore;
-            existingUser.userRole = user.userRole;
+            existingUser.Role = user.Role;
             existingUser.isOnline = user.isOnline;
 
             await _context.SaveChangesAsync();
@@ -77,7 +78,7 @@ namespace backend.Services
                 throw new ArgumentException("用户不存在");
             }
 
-            user.userRole = role;
+            user.Role = role;
             await _context.SaveChangesAsync();
         }
 
@@ -94,4 +95,4 @@ namespace backend.Services
             await _context.SaveChangesAsync();
         }
     }
-}    
+}

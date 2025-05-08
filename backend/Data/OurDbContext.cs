@@ -13,6 +13,7 @@ namespace backend.Data
         public DbSet<User> Users { get; set; }
         public DbSet<GameRoom> GameRooms { get; set; }
         public DbSet<Word> Words { get; set; }
+        public DbSet<Game> Games { get; set; }
 
         public async Task<int> SaveChangesAsync()
         {
