@@ -2,7 +2,7 @@ using backend.Data;
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
-
+//功能添加
 namespace Repositories.GameRepository
 {
     public class GameRepository
