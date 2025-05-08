@@ -35,9 +35,6 @@ namespace backend.Models
         // 游戏的开始时间
         public DateTime? GameStartedAt { get; set; }
 
-        // 当前轮次的得分（可以是每轮玩家得分的字典）
-        public Dictionary<int, int> RoundScores { get; set; }
-
         // 游戏历史记录
         public List<GameHistory> GameHistory { get; set; }
 
@@ -45,14 +42,28 @@ namespace backend.Models
 
         public List<Player> Players { get; set; }
 
+        // 每一轮的得分列表
+        public List<GameRoundScore> RoundScores { get; set; }
+
         public Game()
         {
-            RoundScores = new Dictionary<int, int>();
+            RoundScores = new List<GameRoundScore>();
             GameHistory = new List<GameHistory>();
             Status = GameStatus.Waiting; // 默认状态为等待
             CurrentRound = 1; // 默认从第1轮开始
             MaxRounds = 5; // 默认最大轮次为5
         }
+    }
+
+    // 每一轮的得分实体类
+    public class GameRoundScore
+    {
+        public int Id { get; set; }
+        public int RoundNumber { get; set; }
+        public int Score { get; set; }
+
+        public int GameId { get; set; }
+        public Game Game { get; set; }
     }
 
     // 游戏状态枚举
@@ -63,19 +74,6 @@ namespace backend.Models
         Completed = 3,  // 游戏结束
         Closed = 4      // 游戏被关闭
     }
-
-    // // 游戏历史记录类
-    // public class GameHistory
-    // {
-    //     public int Round { get; set; } // 当前轮次
-    //     public string Word { get; set; } // 本轮词汇
-    //     public List<PlayerRoundHistory> PlayerHistories { get; set; } // 本轮玩家历史（得分、猜词等）
-
-    //     public GameHistory()
-    //     {
-    //         PlayerHistories = new List<PlayerRoundHistory>();
-    //     }
-    // }
 
     // 玩家轮次历史记录
     public class PlayerRoundHistory

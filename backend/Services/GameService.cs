@@ -105,7 +105,7 @@ namespace backend.Services
             int score = correctCount * 10; // 示例规则：每次猜对得 10 分
 
             // 更新游戏得分
-            game.RoundScores[game.CurrentRound] = score;
+            game.RoundScores[game.CurrentRound].Score = score;
 
             await _context.SaveChangesAsync();
             return score;
