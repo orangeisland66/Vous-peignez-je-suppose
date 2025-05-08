@@ -2,33 +2,64 @@
     <div class="drawing-board-container">
         <!-- Drawing Tools -->
         <div class="drawing-tools">
-            <div class="color-picker">
-                <input type="color" v-model="currentColor" title="Choose color">
+            <div class="tool-group">
+                <div class="color-picker">
+                    <input type="color" v-model="currentColor" title="选择颜色">
+                </div>
+                <div class="brush-size">
+                    <input 
+                        type="range" 
+                        v-model="brushSize" 
+                        min="1" 
+                        max="20" 
+                        title="画笔大小"
+                    >
+                    <span class="size-label">{{ brushSize }}px</span>
+                </div>
             </div>
-            <div class="brush-size">
-                <input 
-                    type="range" 
-                    v-model="brushSize" 
-                    min="1" 
-                    max="20" 
-                    title="Brush size"
+            
+            <div class="tool-group">
+                <button @click="clearCanvas" class="tool-btn" title="清空画布">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <button @click="undo" class="tool-btn" title="撤销" :disabled="!canUndo">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button @click="redo" class="tool-btn" title="重做" :disabled="!canRedo">
+                    <i class="fas fa-redo"></i>
+                </button>
+            </div>
+
+            <div class="tool-group">
+                <button 
+                    v-for="preset in brushPresets" 
+                    :key="preset.size"
+                    @click="setBrushPreset(preset)"
+                    class="tool-btn"
+                    :class="{ active: brushSize === preset.size }"
+                    :title="preset.name"
                 >
+                    <i :class="preset.icon"></i>
+                </button>
             </div>
-            <button @click="clearCanvas" class="tool-btn">Clear</button>
-            <button @click="undo" class="tool-btn">Undo</button>
         </div>
 
         <!-- Canvas -->
-        <canvas 
-            ref="canvas"
-            @mousedown="startDrawing"
-            @mousemove="draw"
-            @mouseup="stopDrawing"
-            @mouseleave="stopDrawing"
-            @touchstart="handleTouchStart"
-            @touchmove="handleTouchMove"
-            @touchend="stopDrawing"
-        ></canvas>
+        <div class="canvas-container" ref="canvasContainer">
+            <canvas 
+                ref="canvas"
+                @mousedown="startDrawing"
+                @mousemove="draw"
+                @mouseup="stopDrawing"
+                @mouseleave="stopDrawing"
+                @touchstart="handleTouchStart"
+                @touchmove="handleTouchMove"
+                @touchend="stopDrawing"
+            ></canvas>
+            <div v-if="isDrawing" class="drawing-indicator">
+                正在绘画...
+            </div>
+        </div>
     </div>
 </template>
 
@@ -44,8 +75,25 @@ export default {
             canvas: null,
             currentX: 0,
             currentY: 0,
-            strokes: [], // Store all strokes for undo functionality
-            currentStroke: [] // Store current stroke points
+            strokes: [], // 存储所有笔画
+            currentStroke: [], // 存储当前笔画
+            undoneStrokes: [], // 存储撤销的笔画
+            brushPresets: [
+                { size: 2, name: '细笔', icon: 'fas fa-pen' },
+                { size: 5, name: '中笔', icon: 'fas fa-paint-brush' },
+                { size: 10, name: '粗笔', icon: 'fas fa-marker' },
+                { size: 15, name: '特粗笔', icon: 'fas fa-highlighter' }
+            ],
+            lastDrawTime: 0,
+            drawThrottle: 16 // 约60fps
+        }
+    },
+    computed: {
+        canUndo() {
+            return this.strokes.length > 0
+        },
+        canRedo() {
+            return this.undoneStrokes.length > 0
         }
     },
     mounted() {
@@ -61,15 +109,17 @@ export default {
             this.context = this.canvas.getContext('2d')
             this.resizeCanvas()
             
-            // Set initial canvas style
+            // 设置画布样式
             this.context.lineCap = 'round'
             this.context.lineJoin = 'round'
+            this.context.imageSmoothingEnabled = true
+            this.context.imageSmoothingQuality = 'high'
         },
 
         resizeCanvas() {
-            const container = this.canvas.parentElement
+            const container = this.$refs.canvasContainer
             this.canvas.width = container.clientWidth
-            this.canvas.height = container.clientHeight - 50 // Subtract toolbar height
+            this.canvas.height = container.clientHeight
         },
 
         startDrawing(event) {
@@ -78,10 +128,15 @@ export default {
             this.currentX = x
             this.currentY = y
             this.currentStroke = [{ x, y, color: this.currentColor, size: this.brushSize }]
+            this.lastDrawTime = Date.now()
         },
 
         draw(event) {
             if (!this.isDrawing) return
+
+            const now = Date.now()
+            if (now - this.lastDrawTime < this.drawThrottle) return
+            this.lastDrawTime = now
 
             const { x, y } = this.getCoordinates(event)
             
@@ -102,6 +157,7 @@ export default {
                 this.isDrawing = false
                 if (this.currentStroke.length > 0) {
                     this.strokes.push([...this.currentStroke])
+                    this.undoneStrokes = [] // 清空重做栈
                     this.currentStroke = []
                     this.$emit('stroke-completed', this.strokes[this.strokes.length - 1])
                 }
@@ -112,10 +168,10 @@ export default {
             const rect = this.canvas.getBoundingClientRect()
             let x, y
             
-            if (event.touches) { // Touch event
+            if (event.touches) {
                 x = event.touches[0].clientX - rect.left
                 y = event.touches[0].clientY - rect.top
-            } else { // Mouse event
+            } else {
                 x = event.clientX - rect.left
                 y = event.clientY - rect.top
             }
@@ -136,15 +192,30 @@ export default {
         clearCanvas() {
             this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
             this.strokes = []
+            this.undoneStrokes = []
             this.$emit('canvas-cleared')
         },
 
         undo() {
             if (this.strokes.length === 0) return
             
-            this.strokes.pop()
+            const lastStroke = this.strokes.pop()
+            this.undoneStrokes.push(lastStroke)
             this.redrawCanvas()
             this.$emit('stroke-undone')
+        },
+
+        redo() {
+            if (this.undoneStrokes.length === 0) return
+            
+            const stroke = this.undoneStrokes.pop()
+            this.strokes.push(stroke)
+            this.redrawCanvas()
+            this.$emit('stroke-redone')
+        },
+
+        setBrushPreset(preset) {
+            this.brushSize = preset.size
         },
 
         redrawCanvas() {
@@ -172,32 +243,71 @@ export default {
     display: flex;
     flex-direction: column;
     background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .drawing-tools {
     display: flex;
-    gap: 10px;
-    padding: 10px;
-    background: #f5f5f5;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
     align-items: center;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.tool-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 0 10px;
+    border-right: 1px solid #e9ecef;
+}
+
+.tool-group:last-child {
+    border-right: none;
+}
+
+.canvas-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
 }
 
 canvas {
-    border: 1px solid #ccc;
+    width: 100%;
+    height: 100%;
     cursor: crosshair;
+    touch-action: none;
 }
 
 .tool-btn {
-    padding: 5px 10px;
+    padding: 8px;
     border: none;
     border-radius: 4px;
-    background: #4CAF50;
-    color: white;
+    background: #ffffff;
+    color: #495057;
     cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.tool-btn:hover {
-    background: #45a049;
+.tool-btn:hover:not(:disabled) {
+    background: #e9ecef;
+    color: #212529;
+}
+
+.tool-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tool-btn.active {
+    background: #e9ecef;
+    color: #212529;
 }
 
 .color-picker input {
@@ -209,7 +319,52 @@ canvas {
     cursor: pointer;
 }
 
+.brush-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .brush-size input {
     width: 100px;
+}
+
+.size-label {
+    font-size: 12px;
+    color: #6c757d;
+    min-width: 40px;
+}
+
+.drawing-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+    .drawing-tools {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .tool-group {
+        padding: 5px;
+        border-right: none;
+    }
+
+    .brush-size input {
+        width: 80px;
+    }
 }
 </style>

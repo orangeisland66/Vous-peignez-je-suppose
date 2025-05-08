@@ -1,0 +1,373 @@
+:root {
+    /* 布局尺寸 */
+    --max-content-width: 1920px;
+    --min-content-width: 320px;
+    --header-height: 64px;
+    --footer-height: 60px;
+    --sidebar-width: 420px;
+    --game-toolbar-height: 60px;
+
+    /* 颜色系统 */
+    --primary-color: #4a90e2;
+    --primary-light: #6ba7e8;
+    --primary-dark: #357abd;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+
+    /* 中性色 */
+    --border-color: #e9ecef;
+    --text-color: #212529;
+    --text-muted: #6c757d;
+    --background-color: #f0f2f5;
+    --card-background: #ffffff;
+
+    /* 阴影系统 */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15);
+    --shadow-hover: 0 12px 24px rgba(0, 0, 0, 0.2);
+
+    /* 圆角系统 */
+    --border-radius-sm: 6px;
+    --border-radius: 10px;
+    --border-radius-lg: 16px;
+    --border-radius-xl: 20px;
+
+    /* 动画时间 */
+    --transition-speed: 0.2s;
+    --transition-speed-slow: 0.3s;
+
+    /* 间距系统 */
+    --spacing-xs: 0.375rem;
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1.25rem;
+    --spacing-lg: 2rem;
+    --spacing-xl: 2.5rem;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
+#app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    width: 100%;
+    max-width: var(--max-content-width);
+    min-width: var(--min-content-width);
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.page-container {
+    flex: 1;
+    padding: 2rem 0;
+    width: 100%;
+}
+
+.content-wrapper {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.main-content {
+    grid-column: 1 / -1;
+}
+
+.sidebar {
+    grid-column: 1 / 4;
+}
+
+.content {
+    grid-column: 4 / -1;
+}
+
+.card {
+    background: var(--card-background);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-speed) ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #357abd;
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: border-color var(--transition-speed) ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* 响应式布局 */
+@media (min-width: 768px) {
+    .content-wrapper {
+        padding: 0 2rem;
+    }
+
+    .sidebar {
+        grid-column: 1 / 4;
+    }
+
+    .content {
+        grid-column: 4 / -1;
+    }
+}
+
+@media (min-width: 1024px) {
+    .content-wrapper {
+        padding: 0 3rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .content-wrapper {
+        padding: 0 4rem;
+    }
+}
+
+/* 游戏相关布局 */
+.game-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--sidebar-width);
+    gap: var(--spacing-xl);
+    height: calc(100vh - var(--header-height));
+    padding: var(--spacing-xl);
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    background-color: var(--background-color);
+}
+
+.drawing-area {
+    background: var(--card-background);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow var(--transition-speed);
+}
+
+.drawing-area:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.game-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    height: 100%;
+}
+
+.game-info {
+    background: var(--card-background);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-lg);
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.game-info:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.players-list {
+    background: var(--card-background);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-lg);
+    flex: 0 0 auto;
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.players-list:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.chat-area {
+    flex: 1;
+    min-height: 0;
+    background: var(--card-background);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.chat-area:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+/* 响应式布局优化 */
+@media (max-width: 1400px) {
+    .game-container {
+        grid-template-columns: minmax(0, 1fr) 380px;
+        padding: var(--spacing-lg);
+        gap: var(--spacing-lg);
+    }
+}
+
+@media (max-width: 1024px) {
+    .game-container {
+        grid-template-columns: minmax(0, 1fr) 320px;
+        padding: var(--spacing-md);
+        gap: var(--spacing-md);
+    }
+}
+
+@media (max-width: 768px) {
+    .game-container {
+        grid-template-columns: 1fr;
+        padding: var(--spacing-sm);
+        gap: var(--spacing-sm);
+        height: auto;
+        min-height: calc(100vh - var(--header-height));
+    }
+
+    .game-sidebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--card-background);
+        padding: var(--spacing-md);
+        border-top-left-radius: var(--border-radius-lg);
+        border-top-right-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-lg);
+        z-index: 1000;
+        transform: translateY(0);
+        transition: transform var(--transition-speed);
+    }
+
+    .game-sidebar.hidden {
+        transform: translateY(100%);
+    }
+}
+
+/* 动画效果增强 */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity var(--transition-speed-slow) ease;
+}
+
+.fade-enter,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+    transition: transform var(--transition-speed-slow) ease,
+        opacity var(--transition-speed-slow) ease;
+}
+
+.slide-up-enter,
+.slide-up-leave-to {
+    transform: translateY(20px);
+    opacity: 0;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--light-color);
+    border-radius: var(--border-radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--secondary-color);
+    border-radius: var(--border-radius-sm);
+    transition: background var(--transition-speed);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* 工具提示 */
+[title] {
+    position: relative;
+    cursor: help;
+}
