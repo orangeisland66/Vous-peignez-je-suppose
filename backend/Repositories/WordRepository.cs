@@ -24,13 +24,13 @@ namespace backend.Repositories
         // 根据 ID 获取单个词汇
         public Word GetWordById(int wordId)
         {
-            return _context.Words.FirstOrDefault(w => w.id == wordId);
+            return _context.Words.FirstOrDefault(w => w.Id == wordId);
         }
 
         // 根据类别和难度获取词汇列表
         public IEnumerable<Word> GetWordsByCategoryAndDifficulty(string category, string difficulty)
         {
-            return _context.Words.Where(w => w.category == category && w.difficulty == difficulty).ToList();
+            return _context.Words.Where(w => w.Category == category && w.Difficulty == difficulty).ToList();
         }
 
         // 添加新词汇
@@ -50,7 +50,7 @@ namespace backend.Repositories
         // 删除词汇
         public void DeleteWord(int wordId)
         {
-            var word = _context.Words.FirstOrDefault(w => w.id == wordId);
+            var word = _context.Words.FirstOrDefault(w => w.Id == wordId);
             if (word != null)
             {
                 _context.Words.Remove(word);

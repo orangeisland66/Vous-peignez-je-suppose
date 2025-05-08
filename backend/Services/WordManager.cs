@@ -29,12 +29,12 @@ namespace backend.Services
 
             if (!string.IsNullOrEmpty(category))
             {
-                query = query.Where(w => w.category == category);
+                query = query.Where(w => w.Category == category);
             }
 
             if (!string.IsNullOrEmpty(difficulty))
             {
-                query = query.Where(w => w.difficulty == difficulty);
+                query = query.Where(w => w.Difficulty == difficulty);
             }
 
             return await query.OrderBy(w => Guid.NewGuid()).FirstOrDefaultAsync();
