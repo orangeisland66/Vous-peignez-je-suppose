@@ -41,6 +41,10 @@ namespace backend.Models
         // 游戏历史记录
         public List<GameHistory> GameHistory { get; set; }
 
+        public Player CurrentDrawingPlayer { get; set; }
+
+        public List<Player> Players { get; set; }
+
         public Game()
         {
             RoundScores = new Dictionary<int, int>();

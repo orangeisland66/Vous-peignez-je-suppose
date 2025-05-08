@@ -46,6 +46,12 @@ namespace backend.Models
         // 玩家退出游戏的时间（如果有的话）
         public DateTime? LeftAt { get; set; }
 
+        // 玩家最后一次作画的时间
+        public DateTime? LastDrawingTime { get; set; }
+
+        // 玩家是否已经猜对
+        public bool HasGuessed { get; set; }
+
         public Player()
         {
             Score = 0;
