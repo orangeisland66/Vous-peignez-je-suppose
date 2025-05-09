@@ -1,6 +1,6 @@
 # ignore package files
-package-lock.json
-package.json
+*package-lock.json
+*package.json
 
 # Logs
 logs
