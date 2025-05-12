@@ -46,7 +46,7 @@ namespace backend.Services
         /// </summary>
         /// <param name="roomId">游戏房间的 ID</param>
         /// <returns>对应的游戏房间对象，如果不存在则返回 null</returns>
-        public async Task<GameRoom> GetRoomDetailsAsync(int roomId)
+        public async Task<GameRoom?> GetRoomDetailsAsync(int roomId)
         {
             return await _context.GameRooms
                 .Include(gr => gr.Players)
@@ -265,5 +265,25 @@ namespace backend.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        /// <summary>
+        /// 设置游戏房间的最大玩家数
+        /// </summary>
+        /// <param name="roomId">房间 ID</param>
+        /// <param name="maxPlayers">最大玩家数</param>
+        /// <returns>设置成功返回 true，否则返回 false</returns>
+        public async Task<bool> SetMaxPlayersAsync(int roomId, int maxPlayers)
+        {
+            var gameRoom = await GetRoomDetailsAsync(roomId);
+            if (gameRoom == null || maxPlayers <= 0)
+            {
+                return false;
+            }
+
+            gameRoom.MaxPlayers = maxPlayers;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        
     }
 }

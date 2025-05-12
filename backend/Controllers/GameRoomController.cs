@@ -118,5 +118,41 @@ namespace backend.Controllers
                 return BadRequest(new { Message = "游戏结束失败" });
             }
         }
+
+        // 设置房间私密状态
+        [HttpPost("set-private/{roomId}")]
+        public async Task<IActionResult> SetPrivateStatus(int roomId, [FromBody] bool isPrivate)
+        {
+            var result = await _gameRoomService.SetPrivateStatusAsync(roomId, isPrivate);
+            if (result)
+            {
+                return Ok(new { Message = "房间状态已更新" });
+            }
+            return BadRequest(new { Message = "更新房间状态失败" });
+        }
+
+        // 设置房间密码
+        [HttpPost("set-password/{roomId}")]
+        public async Task<IActionResult> SetRoomPassword(int roomId, [FromBody] string password)
+        {
+            var result = await _gameRoomService.SetRoomPasswordAsync(roomId, password);
+            if (result)
+            {
+                return Ok(new { Message = "房间密码已更新" });
+            }
+            return BadRequest(new { Message = "更新房间密码失败" });
+        }
+
+        // 设置房间最大人数
+        [HttpPost("set-max-players/{roomId}")]
+        public async Task<IActionResult> SetMaxPlayers(int roomId, [FromBody] int maxPlayers)
+        {
+            var result = await _gameRoomService.SetMaxPlayersAsync(roomId, maxPlayers);
+            if (result)
+            {
+                return Ok(new { Message = "房间最大人数已更新" });
+            }
+            return BadRequest(new { Message = "更新房间最大人数失败" });
+        }
     }
 }
