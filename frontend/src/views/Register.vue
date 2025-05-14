@@ -9,10 +9,13 @@
       <div class="form-wrap">
         <h2>创建新账号</h2>
         <form @submit.prevent="handleRegister">
-          <div class="form-row"><label>昵称：</label><input v-model="username" required /></div>
+          <div class="form-row"><label>昵称：</label><input v-model="username" required @input="validateUsername" /></div>
+          <span v-if="usernameError" class="error-msg">{{ usernameError }}</span>
           <div class="form-row"><label>邮箱：</label><input type="email" v-model="email" required /></div>
-          <div class="form-row"><label>密码：</label><input type="password" v-model="password" required /></div>
+          <div class="form-row"><label>密码：</label><input type="password" v-model="password" required @input="validatePassword" /></div>
+          <span v-if="passwordError" class="error-msg">{{ passwordError }}</span>
           <div class="form-row"><label>确认密码：</label><input type="password" v-model="confirmPassword" required /></div>
+          <span v-if="confirmPasswordError" class="error-msg">{{ confirmPasswordError }}</span>
           <div class="form-actions">
             <button type="submit" class="btn primary">注册并登录</button>
             <button type="button" class="btn link" @click="toLogin">已有账号？去登录</button>
@@ -27,13 +30,40 @@
 <script>
 export default {
   data() {
-    return { username: '', email: '', password: '', confirmPassword: '', error: '' }
+    return { username: '', email: '', password: '', confirmPassword: '', error: '',usernameError: '',passwordError: '',confirmPasswordError: '' };
   },
   computed: { isRegister() { return this.$route.path === '/register' } },
   methods: {
+    validateUsername() {
+      if (this.username.length < 3 || this.username.length > 20) {
+        this.usernameError = '用户名长度应在3到20个字符之间';
+      } else {
+        this.usernameError = '';
+      }
+    },
+    validatePassword() {
+      if (this.password.length < 6 || this.password.length > 20) {
+        this.passwordError = '密码长度应在6到20个字符之间';
+      } else {
+        this.passwordError = '';
+      }
+    },
+    validateConfirmPassword() {
+      if (this.password !== this.confirmPassword) {
+        this.confirmPasswordError = '两次输入的密码不一致';
+      } else {
+        this.confirmPasswordError = '';
+      }
+    },
     toLogin() { this.$router.push('/login') },
     toRegister() { this.$router.push('/register') },
     handleRegister() {
+      this.validateUsername();
+      this.validatePassword();
+      this.validateConfirmPassword();
+      if (this.usernameError || this.passwordError || this.confirmPasswordError) {
+        return;
+      }
       if (!this.username || !this.email || !this.password || !this.confirmPassword) {
         this.error = '请填写所有信息'; return
       }
