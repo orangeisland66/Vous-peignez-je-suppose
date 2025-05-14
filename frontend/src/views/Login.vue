@@ -66,10 +66,10 @@ export default {
         return;
       }
 
-      // ✅ 模拟登录成功
+      // 模拟登录成功
       localStorage.setItem('token', 'mock-token');
 
-      // ✅ 跳转到大厅
+      // 跳转到大厅
       this.$router.push('/lobby');
     }
   }

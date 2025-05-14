@@ -59,6 +59,7 @@ export default {
         this.rooms = await res.json()
       } catch (e) {
         console.error(e)
+        this.$toast?.error('获取房间列表失败')
       }
     },
     async fetchUserInfo() {
@@ -68,6 +69,7 @@ export default {
         this.user = await res.json()
       } catch (e) {
         console.error(e)
+        this.$toast?.error('获取用户信息失败')
       }
     },
     createRoom() {
@@ -90,132 +92,193 @@ export default {
 </script>
 
 <style scoped>
+:root {
+  --dai-green: #426666;
+  --dai-green-light: #587878;
+  --dai-green-lighter: #e8f0f0;
+  --dai-green-dark: #304d4d;
+  --dai-green-pale: #f0f5f5;
+  --text-dark: #2c3e50;
+}
+
 .lobby-outer {
   width: 100vw;
   height: 100vh;
   display: flex;
-  align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
+  align-items: center;
+  background-color: var(--dai-green-pale);
 }
+
 .lobby-container {
-  width: 85vw;
-  max-width: 1600px;
+  width: 75%;
   aspect-ratio: 16 / 9;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 24px 32px;
+  max-width: 1400px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  padding: 28px 36px;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  border: 1px solid #e0e6e6;
+  overflow: hidden;
 }
 
-/* Header */
 .lobby-header {
   text-align: center;
-  margin-bottom: 20px;
-}
-.lobby-header h1 {
-  font-size: 2.5rem;
-  color: #333;
+  margin-bottom: 24px;
 }
 
-/* Actions */
+.lobby-header h1 {
+  font-size: 2.8rem;
+  color: var(--dai-green);
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.05);
+  margin: 0;
+  position: relative;
+  display: inline-block;
+}
+
+.lobby-header h1::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background-color: var(--dai-green);
+  border-radius: 3px;
+}
+
 .lobby-actions {
   display: flex;
   justify-content: space-around;
-  margin-bottom: 24px;
-}
-.action-btn {
-  flex: 1;
-  margin: 0 12px;
-  padding: 12px 0;
-  font-size: 1.2rem;
-  color: #e60000;
-  background: transparent;
-  border: 2px solid #e60000;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.action-btn:hover {
-  background: #e60000;
-  color: #fff;
+  margin-bottom: 28px;
 }
 
-/* Room List */
+.action-btn {
+  flex: 1;
+  margin: 0 14px;
+  padding: 14px 0;
+  font-size: 1.3rem;
+  color: var(--dai-green);
+  background: white;
+  border: 2px solid var(--dai-green);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 4px rgba(66, 102, 102, 0.1);
+}
+
+.action-btn:hover {
+  background: var(--dai-green);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(66, 102, 102, 0.2);
+}
+
 .lobby-room-list {
   flex: 1;
   overflow-y: auto;
+  background-color: var(--dai-green-lighter);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: inset 0 2px 6px rgba(66, 102, 102, 0.08);
 }
+
 .list-title {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 500;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  color: var(--dai-green-dark);
+  padding-left: 8px;
+  border-left: 4px solid var(--dai-green);
 }
+
 .room-table {
   list-style: none;
   padding: 0;
   margin: 0;
 }
+
 .room-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
-  border-bottom: 1px solid #eee;
-  font-size: 1.2rem;
+  padding: 14px 20px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background-color: white;
+  box-shadow: 0 2px 6px rgba(66, 102, 102, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+.room-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(66, 102, 102, 0.12);
+}
+
 .room-info {
-  color: #555;
+  color: var(--text-dark);
+  font-size: 1.2rem;
+  font-weight: 500;
 }
+
 .room-btn {
-  padding: 6px 14px;
-  font-size: 1rem;
+  padding: 8px 20px;
+  font-size: 1.05rem;
   border: none;
-  border-radius: 4px;
-  cursor: default;
+  border-radius: 6px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
 }
+
 .room-btn.join {
-  background: #e60000;
-  color: #fff;
+  background: var(--dai-green);
+  color: white;
   cursor: pointer;
 }
-.room-btn.join:hover {
-  background: #b80000;
-}
+
 .room-btn.full {
-  background: #ccc;
+  background: #e0e0e0;
   color: #777;
 }
 
-/* Footer */
 .lobby-footer {
-  text-align: right;
-  padding-top: 12px;
-  border-top: 1px solid #eee;
-  font-size: 1.1rem;
-  color: #333;
-}
-.edit-nick-btn {
-  margin-left: 8px;
-  font-size: 1rem;
-  color: #e60000;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-}
-.edit-nick-btn:hover {
-  color: #b80000;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--dai-green-lighter);
+  font-size: 1.15rem;
+  color: var(--text-dark);
 }
 
-/* Responsive */
-@media (max-width: 900px) {
-  .lobby-container { padding: 16px; }
-  .action-btn { font-size: 1rem; margin: 0 6px; }
-  .room-row { font-size: 1rem; padding: 8px 12px; }
-  .lobby-header h1 { font-size: 2rem; }
+.lobby-footer strong {
+  color: var(--dai-green);
+  margin-left: 4px;
+}
+
+.edit-nick-btn {
+  margin-left: 12px;
+  padding: 6px 12px;
+  font-size: 1rem;
+  color: var(--dai-green);
+  background: transparent;
+  border: 1px solid var(--dai-green);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-nick-btn:hover {
+  background-color: var(--dai-green);
+  color: white;
 }
 </style>
