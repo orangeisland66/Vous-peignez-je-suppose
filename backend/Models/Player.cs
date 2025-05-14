@@ -23,7 +23,7 @@ namespace backend.Models
 
         // 玩家所属的房间
         [ForeignKey("GameRoomId")]
-        public GameRoom GameRoom { get; set; }
+        // public GameRoom GameRoom { get; set; }
 
         // 玩家当前的分数
         public int Score { get; set; }

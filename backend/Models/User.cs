@@ -40,8 +40,6 @@ namespace backend.Models
         public string AvatarUrl { get; set; }
 
         // 添加缺失的属性
-        public string username { get; set; }
-        public string passwordHash { get; set; }
         public int totalScore { get; set; }
         public string userRole { get; set; }
         public bool isOnline { get; set; }

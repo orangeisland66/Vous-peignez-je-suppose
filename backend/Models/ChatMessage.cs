@@ -8,7 +8,7 @@ namespace backend.Models
         public int SenderId { get; set; }
         public User Sender { get; set; }
         public int GameRoomId { get; set; }
-        public GameRoom GameRoom { get; set; }
+        // public GameRoom GameRoom { get; set; }
 
         public ChatMessage()
         {

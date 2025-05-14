@@ -54,6 +54,19 @@ namespace backend.Services
                 .FirstOrDefaultAsync(gr => gr.Id == roomId);
         }
 
+        // /// <summary>
+        // /// 新增根据房间 ID 获取游戏房间的方法（GetRoomByIdAsync）
+        // /// </summary>
+        // /// <param name="roomId">游戏房间的 ID</param>
+        // /// <returns>对应的游戏房间对象，如果不存在则返回 null</returns>
+        // public async Task<GameRoom?> GetRoomByIdAsync(int roomId)
+        // {
+        //     return await _context.GameRooms
+        //         .Include(gr => gr.Players)
+        //         .Include(gr => gr.ChatHistory)
+        //         .FirstOrDefaultAsync(gr => gr.Id == roomId);
+        // }
+
         /// <summary>
         /// 用户加入游戏房间
         /// </summary>
@@ -284,6 +297,5 @@ namespace backend.Services
             await _context.SaveChangesAsync();
             return true;
         }
-        
     }
 }

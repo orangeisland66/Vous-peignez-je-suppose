@@ -26,6 +26,7 @@ namespace backend.Controllers
         }
 
         // 创建一个新的游戏房间
+
         [HttpPost("create")]
         public async Task<IActionResult> CreateRoom([FromBody] GameRoom newRoom)
         {
@@ -44,6 +45,7 @@ namespace backend.Controllers
                 return BadRequest(new { Message = "房间创建失败" });
             }
         }
+
 
         // 加入一个已有的游戏房间
         [HttpPost("join/{roomId}")]

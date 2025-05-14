@@ -35,16 +35,17 @@ namespace backend.Data
                 .HasIndex(u => u.Email)
                 .IsUnique();
 
-            // 配置GameRoom实体
             modelBuilder.Entity<GameRoom>()
-                .HasMany(gr => gr.Players)
-                .WithOne(p => p.GameRoom)
-                .HasForeignKey(p => p.GameRoomId);
+                .HasMany(gr => gr.Players)  // GameRoom 有多个 Players
+                .WithOne()                  // Player 没有反向导航属性
+                .HasForeignKey(p => p.GameRoomId) // 外键指向 GameRoomId
+                .OnDelete(DeleteBehavior.Cascade); // 可选：删除房间时级联删除玩家
 
             modelBuilder.Entity<GameRoom>()
-                .HasMany(gr => gr.ChatHistory)
-                .WithOne(cm => cm.GameRoom)
-                .HasForeignKey(cm => cm.GameRoomId);
+            .HasMany(gr => gr.ChatHistory)    // GameRoom 拥有多个 ChatMessage
+            .WithOne()                        // ChatMessage 没有反向导航到 GameRoom
+            .HasForeignKey(cm => cm.GameRoomId) // 外键
+            .OnDelete(DeleteBehavior.Cascade);  // 可选：级联删除
 
             // 配置Game实体
             modelBuilder.Entity<Game>()
