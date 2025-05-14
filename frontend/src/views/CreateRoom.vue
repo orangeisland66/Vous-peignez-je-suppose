@@ -1,74 +1,153 @@
 <template>
-  <div class="page-outer">
+  <div class="create-room-background">
     <div class="create-room-container">
-      <!-- Title -->
-      <header class="create-room-header">
-        <h1>创建新房间</h1>
-        <div class="title-underline"></div>
+      <!-- Header -->
+      <header class="page-header">
+        <div class="header-content">
+          <div class="title-icon">🎲</div>
+          <h1>创建新房间</h1>
+        </div>
+        <button @click="cancel" class="back-button">
+          <span class="back-icon">←</span>
+          <span>返回大厅</span>
+        </button>
       </header>
 
-      <!-- Form -->
-      <form class="create-room-form" @submit.prevent="handleCreate">
-        <!-- Room Name -->
-        <div class="form-row">
-          <label>房间名称：</label>
-          <input v-model.trim="room.name" type="text" placeholder="输入名称" required />
-        </div>
-
-        <!-- Max Players & Rounds -->
-        <div class="form-row double-row">
-          <div class="form-group">
-            <label>最大玩家数：</label>
-            <select v-model.number="room.maxPlayers">
-              <option v-for="n in [4,6,8]" :key="n" :value="n">{{ n }}</option>
-            </select>
+      <!-- Form Content -->
+      <div class="form-container">
+        <form class="create-room-form" @submit.prevent="handleCreate">
+          <!-- Left Column - Basic Settings -->
+          <div class="form-column basic-settings">
+            <div class="section-title">
+              <div class="section-icon">📋</div>
+              <h2>基本设置</h2>
+            </div>
+            
+            <!-- Room Name Input -->
+            <div class="form-group">
+              <label for="room-name">房间名称</label>
+              <div class="input-wrapper">
+                <input 
+                  id="room-name" 
+                  v-model.trim="room.name" 
+                  type="text" 
+                  placeholder="为您的房间起个名字..." 
+                  required 
+                />
+              </div>
+            </div>
+            
+            <!-- Room Capacity -->
+            <div class="form-group">
+              <label for="max-players">玩家数量</label>
+              <div class="range-selector">
+                <span class="range-value">{{ room.maxPlayers }}人</span>
+                <div class="slider-container">
+                  <input
+                    id="max-players"
+                    type="range"
+                    v-model.number="room.maxPlayers"
+                    min="2"
+                    max="12"
+                    step="2"
+                    class="range-slider"
+                  />
+                  <div class="slider-markers">
+                    <span>2</span>
+                    <span>4</span>
+                    <span>6</span>
+                    <span>8</span>
+                    <span>10</span>
+                    <span>12</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Game Rounds -->
+            <div class="form-group">
+              <label for="game-rounds">游戏回合</label>
+              <div class="rounds-selector">
+                <div 
+                  v-for="rounds in [4, 6, 8, 10]" 
+                  :key="rounds"
+                  @click="room.rounds = rounds"
+                  class="round-option"
+                  :class="{ active: room.rounds === rounds }"
+                >
+                  {{ rounds }}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Privacy Settings -->
+            <div class="form-group">
+              <label>隐私设置</label>
+              <div class="toggle-container">
+                <div 
+                  class="toggle-switch"
+                  :class="{ 'is-private': room.privacy === 'private' }"
+                  @click="togglePrivacy"
+                >
+                  <div class="toggle-handle"></div>
+                </div>
+                <div class="toggle-labels">
+                  <span :class="{ active: room.privacy === 'public' }">公开</span>
+                  <span :class="{ active: room.privacy === 'private' }">私密</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Password Field (conditional) -->
+            <div v-if="room.privacy === 'private'" class="form-group password-field">
+              <label for="room-password">房间密码</label>
+              <div class="input-wrapper">
+                <input
+                  id="room-password"
+                  v-model.trim="room.password"
+                  type="password"
+                  placeholder="设置一个密码以保护房间"
+                  maxlength="12"
+                />
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>回合数：</label>
-            <select v-model.number="room.rounds">
-              <option v-for="n in [4,6,8]" :key="n" :value="n">{{ n }}</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Categories -->
-        <div class="form-row">
-          <label>词库分类：</label>
-          <div class="checkbox-group">
-            <label v-for="cat in categories" :key="cat.value" class="checkbox-option">
-              <input type="checkbox" v-model="room.categories" :value="cat.value" />
-              <span>{{ cat.label }}</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Privacy -->
-        <div class="form-row">
-          <label>隐私设置：</label>
-          <div class="radio-group">
-            <label class="radio-option">
-              <input type="radio" v-model="room.privacy" value="public" />
-              <span>公开房间</span>
-            </label>
-            <label class="radio-option">
-              <input type="radio" v-model="room.privacy" value="private" />
-              <span>私密房间</span>
-            </label>
-          </div>
-        </div>
           
-        <!-- Password (conditional) -->
-        <div v-if="room.privacy === 'private'" class="form-row password-row">
-          <label>房间密码：</label>
-          <input v-model.trim="room.password" type="password" maxlength="12" placeholder="请输入密码" />
-        </div>
-
-        <!-- Actions -->
-        <div class="form-actions">
-          <button type="submit" class="btn primary">创建房间</button>
-          <button type="button" class="btn cancel" @click="cancel">取消返回</button>
-        </div>
-      </form>
+          <!-- Right Column - Categories -->
+          <div class="form-column categories-settings">
+            <div class="section-title">
+              <div class="section-icon">🗂️</div>
+              <h2>词库分类</h2>
+            </div>
+            
+            <div class="categories-description">
+              请选择游戏中要使用的词汇类别，至少选择一项
+            </div>
+            
+            <div class="categories-grid">
+              <div 
+                v-for="cat in categories" 
+                :key="cat.value"
+                class="category-card"
+                :class="{ selected: room.categories.includes(cat.value) }"
+                @click="toggleCategory(cat.value)"
+              >
+                <div class="category-icon">{{ cat.icon }}</div>
+                <div class="category-name">{{ cat.label }}</div>
+                <div class="category-check">✓</div>
+              </div>
+            </div>
+            
+            <!-- Form Actions -->
+            <div class="form-actions">
+              <button type="submit" class="action-button create-button">
+                <span class="btn-icon">✓</span>
+                <span>创建并开始</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </template>
@@ -87,16 +166,29 @@ export default {
         password: ''
       },
       categories: [
-        { label: '动物', value: 'animal' },
-        { label: '食物', value: 'food' },
-        { label: '日常', value: 'daily' },
-        { label: '电影', value: 'movie' },
-        { label: '地名', value: 'place' },
-        { label: '自定义', value: 'custom' }
+        { label: '动物', value: 'animal', icon: '🐼' },
+        { label: '食物', value: 'food', icon: '🍜' },
+        { label: '日常', value: 'daily', icon: '☂️' },
+        { label: '电影', value: 'movie', icon: '🎬' },
+        { label: '地名', value: 'place', icon: '🏙️' },
+        { label: '自定义', value: 'custom', icon: '✏️' }
       ]
     }
   },
   methods: {
+    toggleCategory(value) {
+      if (this.room.categories.includes(value)) {
+        this.room.categories = this.room.categories.filter(c => c !== value);
+      } else {
+        this.room.categories.push(value);
+      }
+    },
+    togglePrivacy() {
+      this.room.privacy = this.room.privacy === 'public' ? 'private' : 'public';
+      if (this.room.privacy === 'public') {
+        this.room.password = '';
+      }
+    },
     async handleCreate() {
       // 基础校验
       if (!this.room.name) {
@@ -132,225 +224,475 @@ export default {
 </script>
 
 <style scoped>
-.page-outer {
+:root {
+  --primary: #4F46E5;
+  --primary-dark: #4338CA;
+  --primary-light: #818CF8;
+  --primary-lightest: #EEF2FF;
+  --secondary: #10B981;
+  --secondary-dark: #059669;
+  --accent: #F472B6;
+  --dark: #1F2937;
+  --light: #F9FAFB;
+  --gray: #6B7280;
+  --gray-light: #E5E7EB;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+}
+
+/* Base Layout */
+.create-room-background {
+  background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
+  min-height: 100vh;
   width: 100vw;
-  height: 100vh;
   display: flex;
-  align-items: center;
   justify-content: center;
-  background: #f8f9fa;
+  align-items: center;
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: var(--dark);
+  padding: 24px;
 }
 
 .create-room-container {
-  width: 75%;
-  max-width: 1400px;
-  aspect-ratio: 16 / 9;
+  width: 90%;
+  max-width: 1200px;
   background: white;
-  border-radius: 16px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-  padding: 28px 36px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid #e0e6e6;
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.1);
   overflow: hidden;
 }
 
-.create-room-header {
-  text-align: center;
-  margin-bottom: 30px;
+/* Header Styles */
+.page-header {
+  background: var(--primary);
+  color: white;
+  padding: 20px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.create-room-header h1 {
-  font-size: 28px;
-  color: #333;
+.header-content {
+  display: flex;
+  align-items: center;
+}
+
+.title-icon {
+  font-size: 24px;
+  background: rgba(255, 255, 255, 0.2);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+}
+
+.page-header h1 {
+  font-size: 24px;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin: 0;
 }
 
-.title-underline {
-  height: 3px;
-  width: 60px;
-  background-color: #e60000;
-  margin: 0 auto;
-  border-radius: 2px;
+.back-button {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.back-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* Form Container */
+.form-container {
+  padding: 32px;
 }
 
 .create-room-form {
-  flex: 1;
   display: flex;
-  flex-direction: column;
+  gap: 32px;
 }
 
-.form-row {
+.form-column {
+  flex: 1;
+  background: var(--light);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Section Headers */
+.section-title {
   display: flex;
   align-items: center;
   margin-bottom: 24px;
 }
 
-.double-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 30px;
-}
-
-.form-row label {
-  width: 120px;
-  font-size: 16px;
-  color: #333;
-}
-
-.form-group {
+.section-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--primary-lightest);
+  border-radius: 10px;
   display: flex;
   align-items: center;
-  flex: 1;
+  justify-content: center;
+  font-size: 18px;
+  margin-right: 12px;
+}
+
+.section-title h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  margin: 0;
+}
+
+/* Form Controls - Basic Settings */
+.form-group {
+  margin-bottom: 24px;
 }
 
 .form-group label {
-  width: auto;
-  margin-right: 10px;
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray);
+  margin-bottom: 8px;
 }
 
-.form-row input,
-.form-row select {
-  flex: 1;
-  height: 40px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 0 12px;
+.input-wrapper {
+  position: relative;
+}
+
+.input-wrapper input {
+  width: 100%;
+  height: 46px;
+  border: 1px solid var(--gray-light);
+  border-radius: 10px;
+  padding: 0 16px;
   font-size: 15px;
-  background-color: #f9f9f9;
+  transition: all 0.2s ease;
+  background: white;
 }
 
-.form-row input:focus,
-.form-row select:focus {
+.input-wrapper input:focus {
   outline: none;
-  border-color: #3a7563;
-  box-shadow: 0 0 0 2px rgba(58, 117, 99, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
-.checkbox-group,
-.radio-group {
+/* Range Slider */
+.range-selector {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  flex: 1;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.checkbox-option,
-.radio-option {
+.range-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.slider-container {
+  position: relative;
+}
+
+.range-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--gray-light);
+  outline: none;
+  margin: 10px 0 20px 0;
+}
+
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+}
+
+.slider-markers {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 10px;
+  margin-top: -15px;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+/* Rounds Selector */
+.rounds-selector {
+  display: flex;
+  gap: 12px;
+}
+
+.round-option {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  padding: 8px 16px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  background: white;
+  border: 1px solid var(--gray-light);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
-.checkbox-option:hover,
-.radio-option:hover {
-  background-color: #e6f0ec;
+.round-option:hover {
+  border-color: var(--primary-light);
+  transform: translateY(-2px);
 }
 
-.checkbox-option input,
-.radio-option input {
-  margin-right: 6px;
-  flex: none;
+.round-option.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
-.password-row {
-  animation: fadeIn 0.3s ease;
+/* Toggle Switch */
+.toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-@keyframes fadeIn {
+.toggle-switch {
+  width: 60px;
+  height: 30px;
+  border-radius: 15px;
+  background: var(--gray-light);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.toggle-switch.is-private {
+  background: var(--primary);
+}
+
+.toggle-handle {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.toggle-switch.is-private .toggle-handle {
+  transform: translateX(30px);
+}
+
+.toggle-labels {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.toggle-labels span {
+  color: var(--gray);
+  transition: color 0.2s ease;
+}
+
+.toggle-labels span.active {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+/* Password Field */
+.password-field {
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Categories Section */
+.categories-description {
+  font-size: 14px;
+  color: var(--gray);
+  margin-bottom: 24px;
+}
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 36px;
+}
+
+.category-card {
+  background: white;
+  border: 1px solid var(--gray-light);
+  border-radius: 12px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.category-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-light);
+}
+
+.category-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.category-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.category-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.2s ease;
+}
+
+.category-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-lightest);
+}
+
+.category-card.selected .category-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Action Buttons */
 .form-actions {
   display: flex;
   justify-content: center;
-  gap: 20px;
   margin-top: auto;
-  padding-top: 30px;
 }
 
-.btn {
-  min-width: 120px;
-  height: 40px;
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 32px;
   border: none;
-  border-radius: 4px;
+  border-radius: 12px;
   font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
 }
 
-.primary {
-  background-color: #3a7563;
+.create-button {
+  background: var(--primary);
   color: white;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
 }
 
-.cancel {
-  background-color: #f0f0f0;
-  color: #333;
+.create-button:hover {
+  background: var(--primary-dark);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
 }
 
-.primary:hover {
-  background-color: #2c5a4c;
+.btn-icon {
+  margin-right: 8px;
+  font-size: 14px;
 }
 
-.cancel:hover {
-  background-color: #e0e0e0;
-}
-
-@media (max-width: 1200px) {
-  .create-room-container {
-    width: 85%;
-    padding: 24px 30px;
+/* Responsive Design */
+@media (max-width: 992px) {
+  .create-room-form {
+    flex-direction: column;
+  }
+  
+  .categories-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .create-room-container {
-    width: 90%;
-    aspect-ratio: auto;
-    min-height: 600px;
+    width: 95%;
+  }
+  
+  .form-container {
     padding: 20px;
   }
   
-  .form-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .form-row label {
-    margin-bottom: 8px;
-  }
-  
-  .double-row {
-    flex-direction: column;
-    gap: 24px;
-  }
-  
-  .form-group {
-    width: 100%;
+  .categories-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 600px) {
-  .create-room-container {
-    width: 95%;
-    padding: 16px;
-  }
-  
-  .form-actions {
+@media (max-width: 576px) {
+  .page-header {
     flex-direction: column;
-    gap: 12px;
+    align-items: flex-start;
+    gap: 16px;
   }
   
-  .btn {
-    width: 100%;
+  .back-button {
+    align-self: flex-start;
+  }
+  
+  .categories-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .rounds-selector {
+    justify-content: space-between;
+  }
+  
+  .round-option {
+    flex: 1;
   }
 }
 </style>

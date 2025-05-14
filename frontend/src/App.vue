@@ -130,8 +130,7 @@ body, html, #app {
   flex: 1;
   display: flex;
   width: 100%;
-  overflow: hidden;
-  padding: 20px 0;
+  overflow: auto;
 }
 
 .main-container {
@@ -139,7 +138,8 @@ body, html, #app {
   width: 100%;
   height: 100%;
   justify-content: flex-start;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .footer {
