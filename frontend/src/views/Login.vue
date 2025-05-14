@@ -11,11 +11,13 @@
         <form @submit.prevent="handleLogin">
           <div class="form-row">
             <label>用户名/邮箱：</label>
-            <input v-model="username" required />
+             <input v-model="username" required @input="validateUsername" />
+             <span v-if="usernameError" class="error-msg">{{ usernameError }}</span>
           </div>
           <div class="form-row">
             <label>密码：</label>
-            <input type="password" v-model="password" required />
+             <input type="password" v-model="password" required @input="validatePassword" />
+             <span v-if="passwordError" class="error-msg">{{ passwordError }}</span>
           </div>
           <div class="form-row">
             <label><input type="checkbox" v-model="remember" />记住我</label>
@@ -45,7 +47,9 @@ export default {
       username: '',
       password: '',
       remember: false,
-      error: ''
+      error: '',
+      usernameError: '',
+      passwordError: ''
     };
   },
   computed: {
@@ -54,6 +58,20 @@ export default {
     }
   },
   methods: {
+     validateUsername() {
+      if (this.username.length < 3 || this.username.length > 20) {
+        this.usernameError = '用户名长度应在3到20个字符之间';
+      } else {
+        this.usernameError = '';
+      }
+    },
+    validatePassword() {
+      if (this.password.length < 6 || this.password.length > 20) {
+        this.passwordError = '密码长度应在6到20个字符之间';
+      } else {
+        this.passwordError = '';
+      }
+    },
     toLogin() {
       if (this.$route.path !== '/login') this.$router.push('/login');
     },
@@ -61,6 +79,11 @@ export default {
       if (this.$route.path !== '/register') this.$router.push('/register');
     },
     handleLogin() {
+      this.validateUsername();
+      this.validatePassword();
+      if (this.usernameError || this.passwordError) {
+        return;
+      }
       if (!this.username || !this.password) {
         this.error = '请输入用户名和密码';
         return;
