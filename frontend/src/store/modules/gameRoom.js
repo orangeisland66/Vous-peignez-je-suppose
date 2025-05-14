@@ -1,8 +1,17 @@
 // frontend/src/store/modules/gameRoom.js
+
+/* 该文件缺乏相关API接口的调用，待API完成后补充 */
+
+
 const state = {
-    rooms: [],
-    currentRoom: null
-  }
+  // 房间列表
+  rooms: [],
+  // 当前房间
+  currentRoom: null,
+  // 当前房间的成员列表
+  members: [],
+  
+}
   
   const mutations = {
     SET_ROOMS(state, rooms) {

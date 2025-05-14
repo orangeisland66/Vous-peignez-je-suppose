@@ -34,6 +34,7 @@ export function checkUserAuth(to, from, next)
 }
 
 // 检查用户是否已登陆，是否在该房间成员列表中
+// 用于 创建房间/加入房间 后进入等待游戏开始的界面
 export function checkRoomPermission(to, from, next)
 {
   const isLoggedIn = !!localStorage.getItem('token')
@@ -42,9 +43,9 @@ export function checkRoomPermission(to, from, next)
     // 未登陆，跳转到登陆页面
     return next({name:'Login'})
   }
-  // 获取信息
-  const roomId = to.params.roomId
-  const userId = store.state.user.id
+  // 获取信息 （为什么这里得到的全是Undefined?)
+  const roomId = to.params.id
+  const userId = store.state.user?.id
   const rooms = store.state.gameRoom.rooms
   const room = rooms.find(r => String(r.id) === String(roomId))
 

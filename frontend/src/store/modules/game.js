@@ -1,4 +1,6 @@
 // frontend/src/store/modules/game.js
+
+// 这里面应该添加一个各个玩家的分数
 const state = {
     canvasData: [],
     chatMessages: [],
