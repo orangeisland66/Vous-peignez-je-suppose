@@ -1,4 +1,6 @@
 // frontend/src/store/modules/user.js
+import apiService from '@/services/apiService';
+
 const state = {
     user: null,
     token: localStorage.getItem('token') || null
@@ -42,8 +44,9 @@ const state = {
       }
     },
   
-    logout({ commit }) {
-      commit('LOGOUT')
+     logout({ commit }, router) {
+        commit('LOGOUT');
+        router.push('/login');
     }
   }
   

@@ -89,12 +89,21 @@ export default {
         return;
       }
 
-      // 模拟登录成功
-      localStorage.setItem('token', 'mock-token');
-
-      // 跳转到大厅
-      this.$router.push('/lobby');
-    }
+      try {
+                const response = await this.$store.dispatch('user/login', {
+                    username: this.username,
+                    password: this.password
+                });
+                // 登录成功，跳转到大厅
+                this.$router.push('/lobby');
+            } catch (error) {
+                if (error.response && error.response.status === 401) {
+                    this.error = '用户名或密码错误';
+                } else {
+                    this.error = '登录失败，请稍后重试';
+                }
+            }
+          }
   }
 };
 </script>
