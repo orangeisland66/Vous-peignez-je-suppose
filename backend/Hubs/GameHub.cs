@@ -43,6 +43,16 @@ namespace backend.Hubs
             }
         }
 
+        //玩家退出登录
+        public async Task Logout(int roomId)
+        {
+            if (_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            {
+                _connectionPlayerMap.Remove(Context.ConnectionId);
+                await Clients.Group(roomId.ToString()).SendAsync("UserLoggedOut", playerId);
+            }
+        }
+
         // 玩家开始作画
         public async Task PlayerDraw(int roomId, Stroke stroke)
         {
