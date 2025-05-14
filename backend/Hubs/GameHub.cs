@@ -278,6 +278,33 @@ namespace backend.Hubs
             // 广播给房间内的所有玩家
             await Clients.OthersInGroup(roomId.ToString()).SendAsync("ReceiveDrawing", new { PlayerId = playerId, Points = points });
         }
+        
+        //接收客户端发送的聊天消息，并将消息广播给房间内的所有玩家。
+        public async Task SendChatMessage(int roomId, string message)
+        {
+            if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            {
+                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+                return;
+            }
+
+            var chatMessage = new ChatMessage
+            {
+                Content = message,
+                SenderId = playerId,
+                GameRoomId = roomId
+            };
+
+            var result = await _gameRoomService.SendChatMessageAsync(roomId, chatMessage);
+            if (result)
+            {
+                await Clients.Group(roomId.ToString()).SendAsync("ReceiveChatMessage", playerId, message);
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("SendChatMessageFailed", "发送聊天消息失败");
+            }
+        }
 
     }
 }
