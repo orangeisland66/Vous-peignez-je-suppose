@@ -1,38 +1,34 @@
 <template>
-  <div class="waiting-outer">
+  <div class="waiting-background">
     <div class="waiting-container">
-      <!-- Title -->
+      <!-- Header -->
       <header class="waiting-header">
         <h1>等待开始</h1>
       </header>
 
       <!-- Room Info -->
-      <section class="room-info">
-        <span>房间号：{{ room?.id || '-' }}</span>
-        <span>房主：{{ room?.host?.username || '-' }}</span>
+      <section class="waiting-info">
+        <div class="info-item">房间号：<span>{{ room?.id || '-' }}</span></div>
+        <div class="info-item">房主：<span>{{ room?.host?.username || '-' }}</span></div>
       </section>
-
-      <!-- Divider -->
-      <div class="divider"></div>
 
       <!-- Player List -->
-      <section class="player-section">
-        <h2>玩家列表：</h2>
-        <ol class="player-list">
+      <section class="waiting-players">
+        <h2>玩家列表</h2>
+        <ul class="player-list">
           <li v-for="(p, i) in players" :key="p.id">
-            {{ i + 1 }}. {{ p.username }} <span v-if="p.id === room.host.id">（房主）</span>
+            <span class="player-index">{{ i + 1 }}.</span>
+            <span class="player-name">{{ p.username }}</span>
+            <span v-if="p.id === room.host.id" class="badge">房主</span>
           </li>
-          <li v-if="players.length < minPlayers">...</li>
-        </ol>
+          <li v-if="players.length < minPlayers" class="player-placeholder">等待更多玩家加入...</li>
+        </ul>
       </section>
-
-      <!-- Divider -->
-      <div class="divider"></div>
 
       <!-- Actions -->
       <section class="waiting-actions">
-        <button v-if="isHost" @click="startGame" class="btn primary">开始游戏</button>
-        <button @click="leaveRoom" class="btn secondary">返回大厅</button>
+        <button v-if="isHost" @click="startGame" class="btn start">开始游戏</button>
+        <button @click="leaveRoom" class="btn leave">返回大厅</button>
       </section>
     </div>
   </div>
@@ -56,29 +52,70 @@ export default {
 
     const isHost = computed(() => room.value.host.id === user.value.id)
 
+    const fetchJSON = async (url) => {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('请求失败')
+      return res.json()
+    }
+
     const fetchUser = async () => {
-      const res = await fetch('/api/user/profile')
-      user.value = await res.json()
+      try {
+        const data = await fetchJSON('/api/user/profile')
+        user.value = data
+      } catch (e) {
+        console.error('获取用户信息失败', e)
+      }
     }
+
     const fetchRoom = async () => {
-      const res = await fetch(`/api/rooms/${route.params.id}`)
-      const data = await res.json()
-      room.value = data
-      players.value = data.players
+      try {
+        const data = await fetchJSON(`/api/rooms/${route.params.id}`)
+        room.value = data
+        players.value = data.players
+      } catch (e) {
+        console.error('获取房间信息失败', e)
+      }
     }
+
     const initSignalR = async () => {
       const conn = new HubConnectionBuilder()
         .withUrl('/gameHub')
         .build()
       conn.on('PlayerJoined', p => players.value.push(p))
       conn.on('PlayerLeft', id => players.value = players.value.filter(x => x.id !== id))
-      conn.on('GameStarted', () => router.push(`/game/${room.value.id}`))
-      await conn.start()
-      connection.value = conn
+      conn.on('GameStarted', () => {
+        // 服务端通知所有玩家游戏开始，当前客户端也跳转
+        router.push(`/game/${room.value.id}`)
+      })
+      try {
+        await conn.start()
+        connection.value = conn
+      } catch (e) {
+        console.error('SignalR 连接失败', e)
+      }
     }
-    const startGame = () => connection.value.invoke('StartGame', room.value.id)
-    const leaveRoom = () => {
-      connection.value.invoke('LeaveRoom', room.value.id)
+
+    const startGame = async () => {
+      if (!connection.value) return
+      try {
+        // 主动调用 StartGame，服务端逻辑应触发 GameStarted 广播
+        await connection.value.invoke('StartGame', room.value.id)
+        // 可选：立即跳转
+        router.push(`/game/${room.value.id}`)
+      } catch (e) {
+        console.error('开始游戏失败', e)
+      }
+    }
+
+    const leaveRoom = async () => {
+      if (connection.value) {
+        try {
+          await connection.value.invoke('LeaveRoom', room.value.id)
+        } catch (e) {
+          console.error('离开房间请求失败', e)
+        }
+      }
+      // 确保跳转无误
       router.push('/lobby')
     }
 
@@ -94,49 +131,138 @@ export default {
 </script>
 
 <style scoped>
-.waiting-outer {
-  display: flex; align-items: center; justify-content: center;
-  width: 100vw; height: 100vh; background: #f5f5f5;
+:root {
+  --primary: #4F46E5;
+  --primary-light: #818CF8;
+  --gray-light: #E5E7EB;
+  --dark: #1F2937;
 }
+
+.waiting-background {
+  background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
+  width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .waiting-container {
-  width: 80vw; max-width: 1100px; aspect-ratio: 16/9;
-  background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  padding: 32px; box-sizing: border-box;
-  display: flex; flex-direction: column; justify-content: space-between;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  width: 90%;
+  max-width: 1200px;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.1);
+  padding: 32px;
+  box-sizing: border-box;
+  gap: 24px;
 }
+
 .waiting-header h1 {
-  text-align: center; font-size: 2.2rem; color: #333;
+  margin: 0;
+  text-align: center;
+  font-size: 2rem;
+  color: var(--primary);
 }
-.room-info {
-  display: flex; justify-content: center; gap: 48px;
-  font-size: 1.3rem; color: #555;
+
+.waiting-info {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  font-size: 1.2rem;
+  color: var(--dark);
 }
-.divider {
-  height: 2px; background: #eee; width: 100%; margin: 16px 0;
+
+.info-item span {
+  font-weight: 600;
 }
-.player-section h2 {
-  font-size: 1.5rem; margin-bottom: 12px; color: #333;
+
+.waiting-players {
+  overflow-y: auto;
+}
+.waiting-players h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--dark);
   text-align: center;
 }
+
 .player-list {
-  list-style: decimal inside; max-width: 400px;
-  margin: 0 auto; font-size: 1.2rem; color: #444;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  max-height: 300px;
+  overflow-y: auto;
 }
+.player-list li {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-light);
+}
+.player-index {
+  width: 24px;
+  font-weight: 600;
+  color: var(--primary);
+}
+.player-name {
+  flex: 1;
+  color: var(--dark);
+}
+.badge {
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.player-placeholder {
+  text-align: center;
+  color: var(--gray-light);
+  padding: 12px 0;
+}
+
 .waiting-actions {
-  display: flex; justify-content: center; gap: 32px;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
 }
 .btn {
-  padding: 12px 24px; font-size: 1.2rem; border-radius: 6px;
-  cursor: pointer; border: none; transition: background .2s;
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
-.primary { background: #e60000; color: #fff; }
-.primary:hover { background: #b80000; }
-.secondary { background: #f0f0f0; color: #333; }
-.secondary:hover { background: #ddd; }
-@media (max-width: 900px) {
-  .waiting-container { padding: 16px; }
-  .room-info { font-size: 1rem; gap: 24px; }
-  .player-list { font-size: 1rem; }
-  .btn { font-size: 1rem; padding: 8px 16px; }
+.btn.start {
+  background: var(--primary);
+  color: white;
 }
-</style>
+.btn.start:hover {
+  background: var(--primary-light);
+}
+.btn.leave {
+  background: var(--gray-light);
+  color: var(--dark);
+}
+.btn.leave:hover {
+  background: #ddd;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .waiting-container {
+    padding: 16px;
+    gap: 16px;
+  }
+  .waiting-info {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .player-list {
+    max-height: 200px;
+  }
+}</style>

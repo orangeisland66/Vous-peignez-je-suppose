@@ -266,7 +266,6 @@ export default {
 /* Header Styles */
 .page-header {
   background: var(--primary);
-  color: white;
   padding: 20px 32px;
   display: flex;
   justify-content: space-between;
@@ -302,7 +301,8 @@ export default {
   background: rgba(255, 255, 255, 0.15);
   border: none;
   border-radius: 8px;
-  color: white;
+  color: var(--primary-dark);
+  margin: 0;
   padding: 8px 16px;
   font-size: 14px;
   cursor: pointer;
