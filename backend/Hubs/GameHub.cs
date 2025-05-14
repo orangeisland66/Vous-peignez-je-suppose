@@ -191,5 +191,93 @@ namespace backend.Hubs
             }
             return null;
         }
+
+        // 下面是我根据后端类图补充的函数
+        // OnConnectedAsync()
+        public override async Task OnConnectedAsync()
+        {
+            // 这里可以添加连接时的逻辑，比如记录连接信息等
+            await base.OnConnectedAsync();
+        }
+
+        // BroadcastStroke()
+        public async Task BroadcastStroke(int roomId, Stroke stroke)
+        {
+            if (_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            {
+                stroke.PlayerId = playerId;
+                await Clients.Group(roomId.ToString()).SendAsync("ReceiveStroke", stroke);
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+            }
+        }
+
+        // BroadcastGuess
+        public async Task BroadcastGuess(int roomId, string guessedWord)
+        {
+            if (_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            {
+                await Clients.Group(roomId.ToString()).SendAsync("ReceiveGuess", playerId, guessedWord);
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+            }
+        }
+
+        // BroadcastChatMessage
+        public async Task BroadcastChatMessage(int roomId, string ChatMessage)
+        {
+            if (_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            {
+                await Clients.Group(roomId.ToString()).SendAsync("ReceiveChatMessage", playerId, ChatMessage);
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+            }
+        }
+
+        // HandleNetworkInterrupt
+        public async Task HandleNetworkInterrupt(int roomId)
+        {
+            if (_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            {
+                await Clients.Group(roomId.ToString()).SendAsync("NetworkInterrupt", playerId);
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+            }
+        }
+
+        // ReconnectUser
+        public async Task ReconnectUser(int roomId)
+        {
+            
+        }
+
+        // UpdatePlayerStatus
+        public async Task UpdatePlayerStatus(int roomId, PlayerStatus status)
+        {
+        
+        }
+
+        // 实时同步画板数据
+        public async Task SyncDrawing(int roomId, List<Point> points)
+        {
+            // 可根据需要校验房间和玩家身份
+            if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            {
+                await Clients.Caller.SendAsync("NotAuthorized","未找到玩家信息");
+                return;
+            }
+
+            // 广播给房间内的所有玩家
+            await Clients.OthersInGroup(roomId.ToString()).SendAsync("ReceiveDrawing", new { PlayerId = playerId, Points = points });
+        }
+
     }
 }
