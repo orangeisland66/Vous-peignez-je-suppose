@@ -292,29 +292,53 @@ namespace backend.Hubs
         //接收客户端发送的聊天消息，并将消息广播给房间内的所有玩家。
         public async Task SendChatMessage(int roomId, string message)
         {
-            if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            Console.WriteLine("111");
+            if (string.IsNullOrWhiteSpace(message)) return;
+
+            // 从连接映射中获取玩家 ID（确保已加入房间）
+            // if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            // {
+            //     await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+            //     return;
+            // }
+             // 测试用：硬编码玩家 ID（玩家一的 ID 假设为 1）
+            int playerId = 1; // 需确保数据库中存在 ID 为 1 的玩家
+
+            // 假设从数据库获取玩家用户名（测试时可固定为已知用户名）
+            var player = new Player { Id = playerId, Username = "玩家一" }; // 临时模拟玩家对象
+
+
+            // 假设从服务中获取玩家用户名（需根据实际业务调整）
+            // var player = await _gameRoomService.GetPlayerByIdAsync(playerId);
+            if (player == null)
             {
-                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+                await Clients.Caller.SendAsync("PlayerNotFound", "玩家信息不存在");
                 return;
             }
 
+            // 构建聊天消息实体（包含时间戳）
             var chatMessage = new ChatMessage
             {
                 Content = message,
                 SenderId = playerId,
-                GameRoomId = roomId
+                GameRoomId = roomId,
+                Timestamp = DateTime.UtcNow // 使用 UTC 时间
             };
 
-            var result = await _gameRoomService.SendChatMessageAsync(roomId, chatMessage);
-            if (result)
-            {
-                await Clients.Group(roomId.ToString()).SendAsync("ReceiveChatMessage", playerId, message);
-            }
-            else
-            {
-                await Clients.Caller.SendAsync("SendChatMessageFailed", "发送聊天消息失败");
-            }
-        }
+            // 保存到数据库
+            await _gameRoomService.SendChatMessageAsync(roomId, chatMessage);
 
-    }
+            // 广播消息给房间内所有玩家（字段需与前端匹配）
+            // await Clients.Group(roomId.ToString()).SendAsync("ReceiveChatMessage", new 
+            await Clients.All.SendAsync("ReceiveChatMessage", new 
+            {
+                playerId,
+                username = player.Username, // 玩家用户名
+                content = message, // 消息内容（前端字段为 content）
+                timestamp = chatMessage.Timestamp.ToString("o") // ISO 8601 格式时间戳
+            });
+            Console.WriteLine($"Chat message sent from player {playerId} in room {roomId}: {message}");
+                }
+
+            }
 }

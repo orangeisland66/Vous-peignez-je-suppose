@@ -92,114 +92,141 @@
     </div>
 </template>
 
-<script>
-export default {
-    name: 'Chat',
-    props: {
-        isDrawer: {
-            type: Boolean,
-            default: false
-        },
-        currentWord: {
-            type: String,
-            default: ''
-        }
-    },
-    data() {
-        return {
-            messages: [],
-            newMessage: '',
-            showEmojiPicker: false,
-            emojis: ['😊', '😂', '🎨', '🎯', '🎮', '🏆', '👏', '💪', '🤔', '🎲'],
-            maxMessageLength: 50,
-            lastMessageTime: 0,
-            messageCooldown: 1000 // 1秒冷却时间
-        }
-    },
-    computed: {
-        canSendMessage() {
-            return this.newMessage.trim().length > 0 && 
-                   this.newMessage.length <= this.maxMessageLength &&
-                   Date.now() - this.lastMessageTime >= this.messageCooldown;
-        },
-        isCharCountWarning() {
-            return this.newMessage.length > this.maxMessageLength * 0.8;
-        },
-        getInputPlaceholder() {
-            if (this.isDrawer) {
-                return '你是画师，不能发送消息';
-            }
-            return this.currentWord ? '输入你的猜测...' : '发送消息...';
-        }
-    },
-    methods: {
-        sendMessage() {
-            if (!this.canSendMessage) return;
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useRoute } from 'vue-router';
+import signalRService from '../services/signalRService'; 
 
-            const message = {
-                content: this.newMessage.trim(),
-                username: this.$store.state.user.username,
-                timestamp: new Date().toISOString(),
-                isSystem: false,
-                isCorrect: this.currentWord && this.newMessage.trim().toLowerCase() === this.currentWord.toLowerCase(),
-                isWrong: this.currentWord && this.newMessage.trim().toLowerCase() !== this.currentWord.toLowerCase()
-            };
-
-            this.$emit('send-message', message);
-            this.newMessage = '';
-            this.lastMessageTime = Date.now();
-            this.showEmojiPicker = false;
-        },
-        addMessage(message) {
-            this.messages.push(message);
-            this.$nextTick(() => {
-                this.scrollToBottom();
-            });
-        },
-        scrollToBottom() {
-            const container = this.$refs.messageContainer;
-            container.scrollTop = container.scrollHeight;
-        },
-        clearMessages() {
-            this.messages = [];
-        },
-        clearInput() {
-            this.newMessage = '';
-            this.showEmojiPicker = false;
-        },
-        toggleEmojiPicker() {
-            this.showEmojiPicker = !this.showEmojiPicker;
-        },
-        insertEmoji(emoji) {
-            if (this.newMessage.length + emoji.length <= this.maxMessageLength) {
-                this.newMessage += emoji;
-            }
-        },
-        formatTime(timestamp) {
-            const date = new Date(timestamp);
-            return date.toLocaleTimeString('zh-CN', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-        },
-        getUsernameColor(message) {
-            if (message.isSystem) return '#ff6b6b';
-            if (message.isCorrect) return '#28a745';
-            return '#4a90e2';
-        }
+// 接收父组件传递的 props
+const props = defineProps({
+    isDrawer: {
+        type: Boolean,
+        default: false
     },
-    mounted() {
-        // 点击外部关闭表情选择器
-        document.addEventListener('click', (e) => {
-            if (!this.$el.contains(e.target)) {
-                this.showEmojiPicker = false;
-            }
-        });
-    },
-    beforeDestroy() {
-        document.removeEventListener('click', this.closeEmojiPicker);
+    currentWord: {
+        type: String,
+        default: ''
     }
-}
+});
+
+const messageInput = ref(null);
+const messageContainer = ref(null);
+const newMessage = ref('');
+const messages = signalRService.chatMessages;
+const showEmojiPicker = ref(false);
+const emojis = ['😊', '😂', '🎨', '🎯', '🎮', '🏆', '👏', '💪', '🤔', '🎲'];
+const maxMessageLength = 50;
+const lastMessageTime = ref(0);
+const messageCooldown = 1000; // 1秒冷却时间
+
+
+// 计算属性：判断是否可以发送消息
+const canSendMessage = computed(() => {
+    return newMessage.value.trim().length > 0 && 
+           newMessage.value.length <= maxMessageLength &&
+           Date.now() - lastMessageTime.value >= messageCooldown;
+});
+
+// 计算属性：判断字符数是否达到警告阈值
+const isCharCountWarning = computed(() => {
+    return newMessage.value.length > maxMessageLength * 0.8;
+});
+
+// 计算属性：获取输入框占位符
+const getInputPlaceholder = computed(() => {
+    if (props.isDrawer) {
+        return '你是画师，不能发送消息';
+    }
+    return props.currentWord? '输入你的猜测...' : '发送消息...';
+});
+
+// 发送消息方法
+const sendMessage = async () => {
+  if (!canSendMessage.value) return;
+
+  try {
+    const message = newMessage.value.trim();
+    console.log('【前端】发送消息:', message); // 打印发送的消息内容
+    
+    await signalRService.sendChatMessage(message);
+    newMessage.value = '';
+    lastMessageTime.value = Date.now();
+  } catch (error) {
+    console.error('【前端】发送消息失败:', error);
+  }
+};
+
+// 添加消息到消息列表并滚动到底部
+const addMessage = (message) => {
+    messages.value.push(message);
+    const container = messageContainer.value;
+    container.scrollTop = container.scrollHeight;
+};
+
+// 滚动到消息列表底部
+const scrollToBottom = () => {
+    const container = messageContainer.value;
+    container.scrollTop = container.scrollHeight;
+};
+
+// 清空消息列表
+const clearMessages = () => {
+    messages.value = [];
+};
+
+// 清空输入框内容
+const clearInput = () => {
+    newMessage.value = '';
+    showEmojiPicker.value = false;
+};
+
+// 切换表情选择器显示状态
+const toggleEmojiPicker = () => {
+    showEmojiPicker.value =!showEmojiPicker.value;
+};
+
+// 插入表情到输入框
+const insertEmoji = (emoji) => {
+    if (newMessage.value.length + emoji.length <= maxMessageLength) {
+        newMessage.value += emoji;
+    }
+};
+
+// 格式化时间
+const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('zh-CN', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+    });
+};
+
+// 获取用户名颜色
+const getUsernameColor = (message) => {
+    if (message.isSystem) return '#ff6b6b';
+    if (message.isCorrect) return '#28a745';
+    return '#4a90e2';
+};
+
+const route = useRoute();
+
+// 点击外部关闭表情选择器
+const closeEmojiPicker = (e) => {
+    if (!messageContainer.value.contains(e.target)) {
+        showEmojiPicker.value = false;
+    }
+};
+
+onMounted(async () => {
+    document.addEventListener('click', closeEmojiPicker);
+    // 调用 initialize 方法
+    await signalRService.initialize(route.params.roomId);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', closeEmojiPicker);
+});
 </script>
 
 <style scoped>

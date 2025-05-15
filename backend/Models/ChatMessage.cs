@@ -1,8 +1,11 @@
+using System;
+using System.ComponentModel.DataAnnotations;
 namespace backend.Models
 {
     public class ChatMessage
     {
         public int Id { get; set; }
+        [Required]
         public string Content { get; set; }
         public DateTime Timestamp { get; set; }
         public int SenderId { get; set; }

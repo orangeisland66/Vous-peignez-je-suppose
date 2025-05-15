@@ -19,7 +19,8 @@ namespace backend.Data
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<DrawingData> DrawingData { get; set; }
         public DbSet<GameRoundScore> GameRoundScores { get; set; }
-
+        public DbSet<GameHistory> GameHistories { get; set; }
+        public DbSet<PlayerScore> PlayerScores { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -47,12 +48,24 @@ namespace backend.Data
             .HasForeignKey(cm => cm.GameRoomId) // 外键
             .OnDelete(DeleteBehavior.Cascade);  // 可选：级联删除
 
+            modelBuilder.Entity<GameRoom>()
+            .OwnsOne(r => r.GameConfig);
             // 配置Game实体
             modelBuilder.Entity<Game>()
                 .HasOne(g => g.GameRoom)
                 .WithMany()
                 .HasForeignKey(g => g.GameRoomId);
 
+            modelBuilder.Entity<GameHistory>(entity =>
+            {
+                entity.HasKey(h => h.Id);
+                
+                // 配置与PlayerScore的一对多关系
+                entity.HasMany(h => h.Scores)
+                    .WithOne()
+                    .HasForeignKey(s => s.GameHistoryId)
+                    .OnDelete(DeleteBehavior.Cascade);
+             });
             // 配置DrawingData实体
             modelBuilder.Entity<DrawingData>()
                 .HasOne(d => d.Game)
@@ -68,6 +81,20 @@ namespace backend.Data
                 .HasOne(grs => grs.Game)
                 .WithMany(g => g.RoundScores)
                 .HasForeignKey(grs => grs.GameId);
+
+            modelBuilder.Entity<PlayerScore>(entity =>
+            {
+                entity.HasKey(s => s.Id);
+                
+                // 配置与User的关系
+                entity.HasOne(s => s.Player)
+                    .WithMany()
+                    .HasForeignKey(s => s.PlayerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                // 配置分数属性
+                entity.Property(s => s.Score).IsRequired();
+            });
         }
 
         public async Task<int> SaveChangesAsync()

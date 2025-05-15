@@ -119,6 +119,7 @@ const maxMessageLength = 50;
 const lastMessageTime = ref(0);
 const messageCooldown = 1000; // 1秒冷却时间
 
+
 // 计算属性：判断是否可以发送消息
 const canSendMessage = computed(() => {
     return newMessage.value.trim().length > 0 && 
@@ -141,21 +142,18 @@ const getInputPlaceholder = computed(() => {
 
 // 发送消息方法
 const sendMessage = async () => {
-    if (!canSendMessage.value) return;
+  if (!canSendMessage.value) return;
 
-    const message = {
-        content: newMessage.value.trim(),
-        username: 'TestUser', // 这里可以替换为实际的用户名
-        timestamp: new Date().toISOString(),
-        isSystem: false,
-        isCorrect: props.currentWord && newMessage.value.trim().toLowerCase() === props.currentWord.toLowerCase(),
-        isWrong: props.currentWord && newMessage.value.trim().toLowerCase()!== props.currentWord.toLowerCase()
-    };
-
-    await signalRService.sendChatMessage(route.params.roomId, message);
+  try {
+    const message = newMessage.value.trim();
+    console.log('【前端】发送消息:', message); // 打印发送的消息内容
+    
+    await signalRService.sendChatMessage(message);
     newMessage.value = '';
     lastMessageTime.value = Date.now();
-    showEmojiPicker.value = false;
+  } catch (error) {
+    console.error('【前端】发送消息失败:', error);
+  }
 };
 
 // 添加消息到消息列表并滚动到底部
@@ -199,7 +197,8 @@ const formatTime = (timestamp) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('zh-CN', { 
         hour: '2-digit', 
-        minute: '2-digit' 
+        minute: '2-digit',
+        second: '2-digit'
     });
 };
 

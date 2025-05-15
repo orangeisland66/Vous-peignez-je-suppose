@@ -43,13 +43,15 @@ using Microsoft.EntityFrameworkCore;
 using backend.Data;
 using backend.Services;
 using Microsoft.OpenApi.Models;
-
+using Microsoft.AspNetCore.SignalR;
+using backend.Hubs;
+using backend.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // 添加数据库上下文
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<OurDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
 // 注册服务
 builder.Services.AddScoped<GameRoomService>();
@@ -67,8 +69,11 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
 });
 
-var app = builder.Build();
+// 添加 SignalR 服务
+builder.Services.AddSignalR(); 
 
+var app = builder.Build();
+app.MapHub<GameHub>("/gameHub"); 
 // 配置HTTP请求管道
 if (app.Environment.IsDevelopment())
 {

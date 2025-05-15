@@ -297,5 +297,15 @@ namespace backend.Services
             await _context.SaveChangesAsync();
             return true;
         }
+                /// <summary>
+        /// 根据玩家ID获取玩家信息
+        /// </summary>
+        /// <param name="playerId">玩家ID</param>
+        /// <returns>玩家信息，如果不存在则返回null</returns>
+        public async Task<Player> GetPlayerByIdAsync(int playerId)
+        {
+            return await _context.Players
+                .FirstOrDefaultAsync(p => p.Id == playerId);
+        }
     }
 }
