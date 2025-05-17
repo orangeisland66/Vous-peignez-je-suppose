@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.Data;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace backend.Services
 {
@@ -26,16 +28,35 @@ namespace backend.Services
                 throw new ArgumentException("用户名已存在");
             }
 
-            // 这里可以添加密码加密逻辑
+            // 密码加密
+            user.PasswordHash = HashPassword(user.PasswordHash);
+
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
             return user;
         }
 
+         // 密码加密方法
+        private string HashPassword(string password)
+        {
+            using (SHA256 sha256Hash = SHA256.Create())
+            {
+                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(password));
+
+                StringBuilder builder = new StringBuilder();
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    builder.Append(bytes[i].ToString("x2"));
+                }
+                return builder.ToString();
+            }
+        }
+
         // 用户登录
         public async Task<User> LoginAsync(string username, string passwordHash)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username && u.PasswordHash == passwordHash);
+            var hashedPassword = HashPassword(passwordHash);
+            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username && u.PasswordHash == hashedPassword);
         }
 
         // 更新用户资料
