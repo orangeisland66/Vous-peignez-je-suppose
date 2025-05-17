@@ -78,7 +78,7 @@ export default {
     toRegister() {
       if (this.$route.path !== '/register') this.$router.push('/register');
     },
-    handleLogin() {
+    async handleLogin() {
       this.validateUsername();
       this.validatePassword();
       if (this.usernameError || this.passwordError) {
