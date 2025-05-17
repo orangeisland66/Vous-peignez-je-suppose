@@ -22,21 +22,21 @@
               <div class="section-icon">📋</div>
               <h2>基本设置</h2>
             </div>
-            
+
             <!-- Room Name Input -->
             <div class="form-group">
               <label for="room-name">房间名称</label>
               <div class="input-wrapper">
-                <input 
-                  id="room-name" 
-                  v-model.trim="room.name" 
-                  type="text" 
-                  placeholder="为您的房间起个名字..." 
-                  required 
+                <input
+                  id="room-name"
+                  v-model.trim="room.name"
+                  type="text"
+                  placeholder="为您的房间起个名字..."
+                  required
                 />
               </div>
             </div>
-            
+
             <!-- Room Capacity -->
             <div class="form-group">
               <label for="max-players">玩家数量</label>
@@ -63,13 +63,13 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- Game Rounds -->
             <div class="form-group">
               <label for="game-rounds">游戏回合</label>
               <div class="rounds-selector">
-                <div 
-                  v-for="rounds in [4, 6, 8, 10]" 
+                <div
+                  v-for="rounds in [4, 6, 8, 10]"
                   :key="rounds"
                   @click="room.rounds = rounds"
                   class="round-option"
@@ -79,12 +79,12 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- Privacy Settings -->
             <div class="form-group">
               <label>隐私设置</label>
               <div class="toggle-container">
-                <div 
+                <div
                   class="toggle-switch"
                   :class="{ 'is-private': room.privacy === 'private' }"
                   @click="togglePrivacy"
@@ -97,7 +97,7 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- Password Field (conditional) -->
             <div v-if="room.privacy === 'private'" class="form-group password-field">
               <label for="room-password">房间密码</label>
@@ -112,21 +112,21 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Right Column - Categories -->
           <div class="form-column categories-settings">
             <div class="section-title">
               <div class="section-icon">🗂️</div>
               <h2>词库分类</h2>
             </div>
-            
+
             <div class="categories-description">
               请选择游戏中要使用的词汇类别，至少选择一项
             </div>
-            
+
             <div class="categories-grid">
-              <div 
-                v-for="cat in categories" 
+              <div
+                v-for="cat in categories"
                 :key="cat.value"
                 class="category-card"
                 :class="{ selected: room.categories.includes(cat.value) }"
@@ -137,7 +137,7 @@
                 <div class="category-check">✓</div>
               </div>
             </div>
-            
+
             <!-- Form Actions -->
             <div class="form-actions">
               <button type="submit" class="action-button create-button">
@@ -153,6 +153,22 @@
 </template>
 
 <script>
+// 导入 apiService
+import apiService from '@/services/apiService';
+
+// 导入生成房间号的函数 (可以放在 src/utils/index.js 中，然后在这里导入)
+// 如果你没有 utils 文件，可以直接把这个函数放在 methods 或组件外部
+function generateRoomId(length = 8) {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  const charactersLength = characters.length;
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
+}
+
+
 export default {
   name: 'CreateRoom',
   data() {
@@ -176,6 +192,18 @@ export default {
     }
   },
   methods: {
+    
+    // 生成房间号的函数
+    generateRoomId(length) {
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      const charactersLength = characters.length;
+      for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+      }
+      return result;
+    },
+
     toggleCategory(value) {
       if (this.room.categories.includes(value)) {
         this.room.categories = this.room.categories.filter(c => c !== value);
@@ -203,17 +231,54 @@ export default {
         this.$toast?.error('请设置房间密码') || alert('请设置房间密码');
         return;
       }
-      
+
       try {
-        // TODO: 调用后端接口创建房间并获取房间ID
-        // const res = await api.createRoom(this.room)
-        // this.$router.push(`/room/${res.id}/waiting`)
-        
-        // 示例跳转：
-        this.$router.push('/room/123/waiting')
+        // **1. 生成房间号**
+        const newRoomId = this.generateRoomId(8); // 调用生成函数
+
+        // **2. 准备发送给后端的数据**
+        const roomDataToSend = {
+          roomId: newRoomId, // 将生成的ID包含在数据中
+          name: this.room.name,
+          status: 0, // 房间状态创建房间时应该是 'waiting'
+          gamemode: "五猜一画", // 默认游戏模式
+          maxPlayers: this.room.maxPlayers,
+          rounds: this.room.rounds,
+          isPrivate: this.room.privacy === 'private', // 将隐私设置转为布尔值
+          password: this.room.privacy === 'private' ? this.room.password : null, // 私密房间才发送密码
+          categories: this.room.categories // 发送选择的分类数组
+          // TODO: 如果后端需要其他信息（如创建者ID），在这里添加
+          // creatorId: this.$store.getters['user/userInfo'].id // 示例：从Vuex获取用户ID
+        };
+
+        console.log('Sending room data to API:', roomDataToSend);
+
+        // **3. 调用后端接口创建房间**
+        // 将注释掉的这行替换为实际的API调用
+        const res = await apiService.createRoom(roomDataToSend);
+
+        // **4. 处理后端响应并获取房间ID**
+        // 假设后端成功时返回的数据结构是 { success: true, roomId: '...', ... }
+        if (res && res.success) {
+           const createdRoomId = res.roomId; // 从后端响应中获取房间ID
+           console.log('Room created successfully. Room ID:', createdRoomId);
+
+           // **5. 导航到新创建的房间页面**
+           // 使用获取到的房间ID进行跳转
+           this.$router.push(`/room/${createdRoomId}/waiting`);
+
+        } else {
+           // 处理后端返回的创建失败信息 (如果后端提供了)
+           const errorMessage = res?.message || '创建房间失败，未知错误';
+           console.error('创建房间失败:', errorMessage);
+           this.$toast?.error(errorMessage) || alert(errorMessage);
+        }
+
       } catch (error) {
         console.error('创建房间失败:', error);
-        this.$toast?.error('创建房间失败，请重试') || alert('创建房间失败，请重试');
+        // 显示更详细的错误信息，可能是网络问题或后端抛出的异常
+        const displayError = error.message || '创建房间失败，请检查网络或重试';
+        this.$toast?.error(displayError) || alert(displayError);
       }
     },
     cancel() {
@@ -652,7 +717,7 @@ export default {
   .create-room-form {
     flex-direction: column;
   }
-  
+
   .categories-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -662,11 +727,11 @@ export default {
   .create-room-container {
     width: 95%;
   }
-  
+
   .form-container {
     padding: 20px;
   }
-  
+
   .categories-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -678,19 +743,19 @@ export default {
     align-items: flex-start;
     gap: 16px;
   }
-  
+
   .back-button {
     align-self: flex-start;
   }
-  
+
   .categories-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .rounds-selector {
     justify-content: space-between;
   }
-  
+
   .round-option {
     flex: 1;
   }
