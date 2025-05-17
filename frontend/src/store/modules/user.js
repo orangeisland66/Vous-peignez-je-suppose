@@ -104,8 +104,8 @@ const actions = {
     try 
     {
       // 这里应该是API请求，暂时使用注释代替
-      // const response = await apiService.register(userData);
-      // const {token, userInfo} = response.data;
+      const response = await apiService.register(userData);
+      const {token, userInfo} = response.data;
 
       commit('SET_USER_INFO', userInfo);
       commit('SET_TOKEN', token);
