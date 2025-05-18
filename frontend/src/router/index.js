@@ -11,7 +11,7 @@ import FinalScore from '@/views/FinalScore.vue'
 import Settings from '@/views/Settings.vue'
 import Profile from '@/views/Profile.vue'
 
-import {checkUserAuth,checkRoomPermission,checkGamePermission,checkGameEnded} from './guards.js'
+import {checkUserAuth,checkRoomPermission,checkGamePermission,checkGameEnded,checkRoundResultPermission} from './guards.js'
 
 // 定义路由
 const routes = [
@@ -75,7 +75,7 @@ const routes = [
     name: 'RoundResult', 
     component: RoundResult, 
     meta: { requiresAuth: true },
-    beforeEnter:checkGamePermission 
+    beforeEnter:checkRoundResultPermission
   },
   // 游戏结束，显示最终分数页面
   {

@@ -34,7 +34,7 @@ export function checkUserAuth(to, from, next)
 }
 
 // 检查用户是否已登陆，是否在该房间成员列表中
-// 用于 创建房间/加入房间 后进入等待游戏开始的界面
+// 用于 加入房间 后进入等待游戏开始的界面
 export function checkRoomPermission(to, from, next)
 {
   const isLoggedIn = !!localStorage.getItem('token')
@@ -43,21 +43,13 @@ export function checkRoomPermission(to, from, next)
     // 未登陆，跳转到登陆页面
     return next({name:'Login'})
   }
-  // 获取信息 （为什么这里得到的全是Undefined?)
+  // 获取信息 
   const roomId = to.params.id
-  const userId = store.state.user?.id
+  const userId = store.state.user.userInfo.id
   const rooms = store.state.gameRoom.rooms
   const room = rooms.find(r => String(r.id) === String(roomId))
-
-  // 调试输出
-  console.log('checkRoomPermission 调试:')
-  console.log('roomId:', roomId)
-  console.log('userId',userId)
-  console.log('room:', room)
-
-  if(!room || !room.members.includes(userId))
+  if(!room || !room.players.some(p=>String(p.id) == String(userId)))
   {
-    //用户不是该房间成员
     return next({name:'Lobby'})
   }
   // 其余正常前进
@@ -72,24 +64,46 @@ export function checkGamePermission(to,from,next)
   {
     return next({name:'Login'})
   }
-  const roomId = to.params.roomId
-  const userId = store.state.user.id
-  const room = store.state.rooms[roomId]
-  if (!room || !room.members.includes(userId))
+  const roomId = to.params.id
+  const userId = store.state.userInfo.id
+  const rooms = store.state.gameRoom.rooms
+  const room = rooms.find(r=>String(r.id) === String(roomId))
+  if (!room || !room.players.some(p=>String(p.id) === String(userId)))
   {
     return next({name:'Lobby'})
   }
-
   // 检查游戏是否开始
-  if(!room.gameStarted)
+  const isGameStarted = store.state.game.isGameStarted
+  if(!isGameStarted)
   {
-    // 游戏未开始，不能进入
-    return next({name:'WaitingRoom', params:{id:roomId}})
+    return next({name: 'WaitingRoom', params:{id:roomId}})
   }
   return next()
 }
 
-// 检查用户是否已登陆，用户是否是该房间成员，游戏是否结束
+// 检查用户是否为房间成员且当前为单轮结束阶段
+export function checkRoundResultPermission(to, from, next) {
+  const isLoggedIn = !!localStorage.getItem('token')
+  if (!isLoggedIn) {
+    return next({ name: 'Login' })
+  }
+  const roomId = to.params.id
+  const userId = store.state.user.userInfo.id
+  const rooms = store.state.gameRoom.rooms
+  const room = rooms.find(r => String(r.id) === String(roomId))
+  if (!room || !room.players.some(p => String(p.id) === String(userId))) {
+    return next({ name: 'Lobby' })
+  }
+  // 检查是否为单轮结束状态
+  const gameStatus = store.state.game.gameStatus
+  if (gameStatus !== 'roundEnd') {
+    // 如果不是单轮结束，跳转回游戏房间
+    return next({ name: 'GameRoom', params: { id: roomId } })
+  }
+  return next()
+}
+
+// 检查用户是否为房间成员且游戏已结束（用于最终分数页面）
 export function checkGameEnded(to,from,next)
 {
   const isLoggedIn = !!localStorage.getItem('token')
@@ -97,20 +111,20 @@ export function checkGameEnded(to,from,next)
   {
     return next({name:'Login'})
   }
-  const roomId = to.params.roomId
-  const userId = store.state.user.id
-  const room = store.state.rooms[roomId]
-  if(!room || !room.members.includes(userId))
+  const roomId = to.params.id
+  const userId = store.state.user.userInfo.id
+  const rooms = store.state.gameRoom.rooms
+  const room = rooms.find(r=>String(r.id) === String(roomId))
+  if(!room || !room.players.some(p=>String(p.id)===String(userId)))
   {
     return next({name:'Lobby'})
   }
   // 检查游戏是否已经结束
-  if(room.gameStatus !== 'ended')
+  const gameStatus = store.state.game.gameStatus
+  if(gameStatus !== 'gameEnd')
   {
-    // 游戏未结束，不能访问最终分数界面
     return next({name:'GameRoom', params:{id:roomId}})
   }
-
   return next()
 }
 
