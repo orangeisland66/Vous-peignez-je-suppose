@@ -11,13 +11,13 @@
         <form @submit.prevent="handleLogin">
           <div class="form-row">
             <label>用户名/邮箱：</label>
-             <input v-model="username" required @input="validateUsername" />
-             <span v-if="usernameError" class="error-msg">{{ usernameError }}</span>
+            <input v-model="username" required @input="validateUsername" />
+            <span v-if="usernameError" class="error-msg">{{ usernameError }}</span>
           </div>
           <div class="form-row">
             <label>密码：</label>
-             <input type="password" v-model="password" required @input="validatePassword" />
-             <span v-if="passwordError" class="error-msg">{{ passwordError }}</span>
+            <input type="password" v-model="password" required @input="validatePassword" />
+            <span v-if="passwordError" class="error-msg">{{ passwordError }}</span>
           </div>
           <div class="form-row">
             <label><input type="checkbox" v-model="remember" />记住我</label>
@@ -58,7 +58,7 @@ export default {
     }
   },
   methods: {
-     validateUsername() {
+    validateUsername() {
       if (this.username.length < 3 || this.username.length > 20) {
         this.usernameError = '用户名长度应在3到20个字符之间';
       } else {
@@ -78,32 +78,46 @@ export default {
     toRegister() {
       if (this.$route.path !== '/register') this.$router.push('/register');
     },
-    async handleLogin() {
-      this.validateUsername();
-      this.validatePassword();
-      if (this.usernameError || this.passwordError) {
-        return;
-      }
-      if (!this.username || !this.password) {
-        this.error = '请输入用户名和密码';
-        return;
-      }
+    // async handleLogin() {
+    //   this.validateUsername();
+    //   this.validatePassword();
+    //   if (this.usernameError || this.passwordError) {
+    //     return;
+    //   }
+    //   if (!this.username || !this.password) {
+    //     this.error = '请输入用户名和密码';
+    //     return;
+    //   }
 
-      try {
-                const response = await this.$store.dispatch('user/login', {
-                    username: this.username,
-                    password: this.password
-                });
-                // 登录成功，跳转到大厅
-                this.$router.push('/lobby');
-            } catch (error) {
-                if (error.response && error.response.status === 401) {
-                    this.error = '用户名或密码错误';
-                } else {
-                    this.error = '登录失败，请稍后重试';
-                }
-            }
-          }
+    //   try {
+    //             const response = await this.$store.dispatch('user/login', {
+    //                 username: this.username,
+    //                 password: this.password
+    //             });
+    //             // 登录成功，跳转到大厅
+    //             this.$router.push('/lobby');
+    //         } catch (error) {
+    //             if (error.response && error.response.status === 401) {
+    //                 this.error = '用户名或密码错误';
+    //             } else {
+    //                 this.error = '登录失败，请稍后重试';
+    //             }
+    //         }
+    //       }
+    async handleLogin() {
+      // 模拟登录逻辑：无论输入什么，都跳转
+      const fakeUser = {
+        id: 1,
+        username: 'guest',
+        token: 'fake-token'
+      };
+
+      // 你可以在此处设置 store 或 localStorage
+      localStorage.setItem('token', 'dummy-token');
+
+      // 然后跳转
+      this.$router.push('/lobby');
+    }
   }
 };
 </script>
