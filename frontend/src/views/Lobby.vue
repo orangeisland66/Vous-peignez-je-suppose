@@ -51,15 +51,16 @@
             <ul v-else class="room-list">
               <li v-for="room in rooms" :key="room.id" class="room-card">
                 <div class="room-card-content">
-                  <div class="room-id">房间 #{{ room.id }}</div>
+                  <div class="room-name">{{ room.name }}</div> <!-- 修改这里，显示房间名称 -->
+                  <div class="room-code">房间号: {{ room.roomId }}</div>
                   <div class="room-capacity">
                     <div class="capacity-bar">
-                      <div class="capacity-fill" :style="{width: (room.playerCount/room.maxPlayers)*100 + '%'}"></div>
+                      <div class="capacity-fill" :style="{width: (room.players.length/room.maxPlayers)*100 + '%'}"></div>
                     </div>
-                    <div class="capacity-text">{{ room.playerCount }}/{{ room.maxPlayers }}</div>
+                    <div class="capacity-text">人数:{{ room.players.length }}/{{ room.maxPlayers }}</div>
                   </div>
                   <button
-                    v-if="room.playerCount < room.maxPlayers"
+                    v-if="room.players.length < room.maxPlayers"
                     @click="joinRoom(room.id)"
                     class="join-btn"
                   >加入游戏</button>
@@ -90,7 +91,7 @@ export default {
   methods: {
     async fetchRooms() {
       try {
-        const res = await fetch('/api/rooms')
+        const res = await fetch('/api/rooms/list')
         if (!res.ok) throw new Error('获取房间列表失败')
         this.rooms = await res.json()
       } catch (e) {
@@ -385,6 +386,21 @@ export default {
   overflow-y: auto;
   padding: 20px;
 }
+
+.room-name {
+  font-size: 20px; /* 调整字体大小，使其更大 */
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 4px; /* 添加底部外边距，与 RoomId 分隔 */
+}
+
+.room-code {
+  font-size: 14px; /* 房间 RoomId 的字体大小，比 18px 小 */
+  color: var(--gray); /* 使用灰色，使其不那么醒目 */
+  margin-top: 4px; /* 在房间名称下方留一点空间 */
+  font-weight: 400; /* 可以设置为普通字体粗细 */
+}
+
 
 .no-rooms {
   height: 100%;

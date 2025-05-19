@@ -218,6 +218,7 @@ export default {
       }
     },
     async handleCreate() {
+        console.log('handleCreate method called.'); // <-- 添加这一行
       // 基础校验
       if (!this.room.name) {
         this.$toast?.error('请输入房间名称') || alert('请输入房间名称');
@@ -233,13 +234,46 @@ export default {
       }
 
       try {
-        // TODO: 调用后端接口创建房间并获取房间ID
-        // const res = await api.createRoom(this.room)
-        // this.$router.push(`/room/${res.id}/waiting`)
+// **1. 生成房间号**
+        const newRoomId = this.generateRoomId(8); // 调用生成函数
 
-        // 示例跳转：
-        //this.$router.push(`/room/${this.room.id}/waiting`)
-        this.$router.push('/room/123/waiting') // 假设房间ID为123
+        // **2. 准备发送给后端的数据**
+        const roomDataToSend = {
+          roomId: newRoomId, // 将生成的ID包含在数据中
+          name: this.room.name,
+          status: 0, // 房间状态创建房间时应该是 'waiting'
+          gamemode: "五猜一画", // 默认游戏模式
+          maxPlayers: this.room.maxPlayers,
+          rounds: this.room.rounds,
+          isPrivate: this.room.privacy === 'private', // 将隐私设置转为布尔值
+          password: this.room.privacy === 'private' ? this.room.password : null, // 私密房间才发送密码
+          categories: this.room.categories // 发送选择的分类数组
+          // TODO: 如果后端需要其他信息（如创建者ID），在这里添加
+          // creatorId: this.$store.getters['user/userInfo'].id // 示例：从Vuex获取用户ID
+        };
+
+        console.log('Sending room data to API:', roomDataToSend);
+
+        // **3. 调用后端接口创建房间**
+        // 将注释掉的这行替换为实际的API调用
+        const res = await apiService.createRoom(roomDataToSend);
+
+        // **4. 处理后端响应并获取房间ID**
+        // 假设后端成功时返回的数据结构是 { success: true, roomId: '...', ... }
+        if (res && res.success) {
+           const createdRoomId = res.roomId; // 从后端响应中获取房间ID
+           console.log('Room created successfully. Room ID:', createdRoomId);
+
+           // **5. 导航到新创建的房间页面**
+           // 使用获取到的房间ID进行跳转
+           this.$router.push(`/room/${createdRoomId}/waiting`);
+
+        } else {
+           // 处理后端返回的创建失败信息 (如果后端提供了)
+           const errorMessage = res?.message || '创建房间失败，未知错误';
+           console.error('创建房间失败:', errorMessage);
+           this.$toast?.error(errorMessage) || alert(errorMessage);
+        }
       } catch (error) {
         console.error('创建房间失败:', error);
         // 显示更详细的错误信息，可能是网络问题或后端抛出的异常
