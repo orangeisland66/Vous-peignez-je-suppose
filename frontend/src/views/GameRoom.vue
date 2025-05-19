@@ -24,30 +24,13 @@
         <!-- Left Panel - Canvas -->
         <section class="canvas-panel">
           <div class="canvas-container">
-            <canvas
-              ref="canvas"
-              class="drawing-canvas"
-              @mousedown="onCanvasDown"
-              @mousemove="onCanvasMove"
-              @mouseup="onCanvasUp"
-              :class="{ 'readonly': !isPainter }"
-            ></canvas>
-          </div>
-          
-          <!-- Painter Tools -->
-          <div v-if="isPainter" class="tool-bar">
-            <button @click="selectTool('pen')" class="tool-btn" :class="{ 'active': tool === 'pen' }">
-              <div class="tool-icon">✏️</div>
-              <span class="tool-text">画笔</span>
-            </button>
-            <button @click="selectTool('eraser')" class="tool-btn" :class="{ 'active': tool === 'eraser' }">
-              <div class="tool-icon">🧽</div>
-              <span class="tool-text">橡皮</span>
-            </button>
-            <button @click="clearCanvas" class="tool-btn clear">
-              <div class="tool-icon">🗑️</div>
-              <span class="tool-text">清除</span>
-            </button>
+            <!-- 使用DrawingBoard组件替换原始Canvas -->
+            <drawing-board
+              ref="drawingBoard"
+              :readonly="!isPainter"
+              @stroke-completed="onStrokeCompleted"
+              @canvas-cleared="onCanvasCleared"
+            />
           </div>
           
           <!-- Word Hint for Painter -->
@@ -107,8 +90,14 @@
 </template>
 
 <script>
+// 导入DrawingBoard组件
+import DrawingBoard from '@/components/game/DrawingBoard.vue';
+
 export default {
   name: 'GameRoom',
+  components: {
+    DrawingBoard // 注册DrawingBoard组件
+  },
   data() {
     return {
       currentRound: 2,
@@ -120,18 +109,10 @@ export default {
       guessList: [
         { username: 'Alice', word: 'apple', correct: false },
         { username: 'Charlie', word: 'banana', correct: false }
-      ],
-      // Canvas Drawing State
-      drawing: false,
-      ctx: null,
-      tool: 'pen'
+      ]
     }
   },
   mounted() {
-    const canvas = this.$refs.canvas
-    this.ctx = canvas.getContext('2d')
-    canvas.width = canvas.clientWidth
-    canvas.height = canvas.clientHeight
     // TODO: 初始化从后端获取 isPainter、currentPainter、targetWord 等
   },
   methods: {
@@ -140,36 +121,20 @@ export default {
       const s = String(sec % 60).padStart(2, '0')
       return `${m}:${s}`
     },
-    selectTool(tool) {
-      this.tool = tool
-      if (tool === 'eraser') this.ctx.globalCompositeOperation = 'destination-out'
-      else this.ctx.globalCompositeOperation = 'source-over'
-    },
-    clearCanvas() {
-      const canvas = this.$refs.canvas
-      this.ctx.clearRect(0, 0, canvas.width, canvas.height)
-    },
-    onCanvasDown(e) {
-      if (!this.isPainter) return
-      this.drawing = true
-      this.ctx.beginPath()
-      this.ctx.lineWidth = this.tool === 'pen' ? 2 : 10
-      this.ctx.moveTo(e.offsetX, e.offsetY)
-    },
-    onCanvasMove(e) {
-      if (this.drawing) {
-        this.ctx.lineTo(e.offsetX, e.offsetY)
-        this.ctx.stroke()
-      }
-    },
-    onCanvasUp() {
-      if (this.drawing) this.drawing = false
-    },
     sendGuess() {
       if (!this.guessInput) return
       // TODO: 发送猜词到后端
       this.guessList.push({ username: '你', word: this.guessInput, correct: null })
       this.guessInput = ''
+    },
+    // 处理来自DrawingBoard的事件
+    onStrokeCompleted(stroke) {
+      // TODO: 如果需要，可以将笔画数据发送到后端，以便同步给其他玩家
+      console.log('笔画完成:', stroke);
+    },
+    onCanvasCleared() {
+      // TODO: 通知后端画布已清空
+      console.log('画布已清空');
     }
   }
 }
@@ -330,59 +295,6 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   margin-bottom: 16px;
-}
-
-.drawing-canvas {
-  width: 90%;
-  height: 90%;
-  border: 2px solid var(--gray-light);
-  border-radius: 12px;
-  background: white;
-}
-
-.drawing-canvas.readonly {
-  cursor: not-allowed;
-}
-
-.tool-bar {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.tool-btn {
-  background: white;
-  border: 1px solid var(--gray-light);
-  border-radius: 12px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-
-.tool-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-.tool-btn.active {
-  background: var(--primary-lightest);
-  border-color: var(--primary-light);
-  color: var(--primary);
-}
-
-.tool-btn.clear {
-  background: #FEF2F2;
-  border-color: #FECACA;
-  color: var(--danger);
-}
-
-.tool-icon {
-  font-size: 18px;
 }
 
 .word-hint {
@@ -614,22 +526,6 @@ export default {
   .game-container {
     width: 95%;
     padding: 16px;
-  }
-  
-  .tool-bar {
-    flex-direction: column;
-    position: absolute;
-    right: 16px;
-    top: 16px;
-    z-index: 10;
-  }
-  
-  .tool-btn {
-    padding: 8px;
-  }
-  
-  .tool-text {
-    display: none;
   }
 }
 </style>
