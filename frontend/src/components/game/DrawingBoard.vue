@@ -6,6 +6,17 @@
                 <div class="color-picker">
                     <input type="color" v-model="currentColor" title="选择颜色">
                 </div>
+                <!--增加颜色预设功能-->
+                <div class = "color-presets">
+                    <button
+                        v-for="color in colorPresets"
+                        :key="color.value"
+                        @click="currentColor = color.value"
+                        class="color-preset-btn"
+                        :style="{backgroundColor: color.value}"
+                        :title="color.name"
+                        ></button>
+                </div>
                 <div class="brush-size">
                     <input 
                         type="range" 
@@ -85,7 +96,18 @@ export default {
                 { size: 15, name: '特粗笔', icon: 'fas fa-highlighter' }
             ],
             lastDrawTime: 0,
-            drawThrottle: 16 // 约60fps
+            drawThrottle: 16, // 约60fps
+            // 添加颜色预设
+            colorPresets:[
+                {name: '红色', value: '#FF0000'},
+                {name: '绿色', value: '#00FF00'},
+                {name: '蓝色', value: '#0000FF'},
+                {name: '黄色', value: '#FFFF00'},
+                {name: '紫色', value: '#800080'},
+                {name: '橙色', value: '#FFA500'},
+                {name: '粉色', value: '#FFC0CB'},
+                {name: '黑色', value: '#000000'}
+            ]
         }
     },
     computed: {
@@ -347,6 +369,27 @@ canvas {
     animation: fadeIn 0.3s ease;
 }
 
+.color-presets{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    margin:0 10px;
+}
+
+.color-preset-btn{
+    width: 20px;
+    height: 20px;
+    border: 1px solid #e9ecef;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.color-preset-btn:hover {
+    transform: scale(1.2);
+    border:1px solid #abd5bd;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -366,5 +409,10 @@ canvas {
     .brush-size input {
         width: 80px;
     }
+
+    .color-presets{
+        margin: 5px 0;
+    }
 }
 </style>
+
