@@ -338,7 +338,7 @@ export default {
 .action-text {
   font-weight: 600;
   font-size: 16px;
-  color: var(--light);
+  color: black
 }
 
 .leave .action-text {

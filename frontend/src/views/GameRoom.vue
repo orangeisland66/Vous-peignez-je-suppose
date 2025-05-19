@@ -115,7 +115,7 @@ export default {
       currentPainter: 'Bob',
       timer: 45,
       targetWord: 'apple',
-      isPainter: false, // 根据实际逻辑设置
+      isPainter: true, // 根据实际逻辑设置
       guessInput: '',
       guessList: [
         { username: 'Alice', word: 'apple', correct: false },

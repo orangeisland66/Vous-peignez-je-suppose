@@ -208,9 +208,10 @@ export default {
         // TODO: 调用后端接口创建房间并获取房间ID
         // const res = await api.createRoom(this.room)
         // this.$router.push(`/room/${res.id}/waiting`)
-        
+
         // 示例跳转：
-        this.$router.push('/room/123/waiting')
+        //this.$router.push(`/room/${this.room.id}/waiting`)
+        this.$router.push('/room/123/waiting') // 假设房间ID为123
       } catch (error) {
         console.error('创建房间失败:', error);
         this.$toast?.error('创建房间失败，请重试') || alert('创建房间失败，请重试');
