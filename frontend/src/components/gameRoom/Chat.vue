@@ -1,23 +1,8 @@
 <template>
     <div class="chat-container">
         <div class="chat-header">
-            <h3>游戏聊天</h3>
-            <div class="chat-actions">
-                <button 
-                    class="action-btn" 
-                    @click="toggleEmojiPicker"
-                    title="表情"
-                >
-                    <i class="fas fa-smile"></i>
-                </button>
-                <button 
-                    class="action-btn" 
-                    @click="clearMessages"
-                    title="清空消息"
-                >
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
+            <!-- <h3>游戏聊天</h3> -->
+            
         </div>
 
         <div class="chat-messages" ref="messageContainer">
@@ -64,8 +49,24 @@
                 </span>
             </div>
         </div>
-
+     
         <div class="chat-input">
+            <div class="chat-actions">
+                <button 
+                    class="action-btn" 
+                    @click.stop="toggleEmojiPicker"
+                    title="表情"
+                >
+                    <i class="fas fa-smile"></i>
+                </button>
+                <!-- <button 
+                    class="action-btn" 
+                    @click.stop="clearMessages"
+                    title="清空消息"
+                >
+                    <i class="fas fa-trash"></i>
+                </button> -->
+            </div>
             <div class="input-wrapper">
                 <input
                     v-model="newMessage"
@@ -83,7 +84,7 @@
             </div>
             <button 
                 @click="sendMessage" 
-                :disabled="isDrawer || !canSendMessage"
+                :disabled="isDrawer || !canSendMessage || isSending"
                 class="send-btn"
             >
                 <i class="fas fa-paper-plane"></i>
@@ -95,7 +96,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
-import signalRService from '../services/signalRService'; 
+import signalRService from '../../services/signalRService'; 
 
 // 接收父组件传递的 props
 const props = defineProps({
@@ -117,14 +118,13 @@ const showEmojiPicker = ref(false);
 const emojis = ['😊', '😂', '🎨', '🎯', '🎮', '🏆', '👏', '💪', '🤔', '🎲'];
 const maxMessageLength = 50;
 const lastMessageTime = ref(0);
-const messageCooldown = 1000; // 1秒冷却时间
-
+// const messageCooldown = 10; // 0.1秒冷却时间
+const isSending = ref(false);
 
 // 计算属性：判断是否可以发送消息
 const canSendMessage = computed(() => {
     return newMessage.value.trim().length > 0 && 
-           newMessage.value.length <= maxMessageLength &&
-           Date.now() - lastMessageTime.value >= messageCooldown;
+           newMessage.value.length <= maxMessageLength 
 });
 
 // 计算属性：判断字符数是否达到警告阈值
@@ -147,12 +147,16 @@ const sendMessage = async () => {
   try {
     const message = newMessage.value.trim();
     console.log('【前端】发送消息:', message); // 打印发送的消息内容
-    
+    if (!canSendMessage.value || isSending.value) return; // 新增：检查发送状态
+  
+    isSending.value = true; // 开始发送，禁用按钮
     await signalRService.sendChatMessage(message);
     newMessage.value = '';
     lastMessageTime.value = Date.now();
   } catch (error) {
     console.error('【前端】发送消息失败:', error);
+  } finally {
+    isSending.value = false; // 恢复按钮
   }
 };
 
@@ -182,7 +186,8 @@ const clearInput = () => {
 
 // 切换表情选择器显示状态
 const toggleEmojiPicker = () => {
-    showEmojiPicker.value =!showEmojiPicker.value;
+    showEmojiPicker.value = !showEmojiPicker.value;
+    console.log('表情选择器状态:', showEmojiPicker.value);
 };
 
 // 插入表情到输入框
@@ -231,7 +236,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .chat-container {
-    display: flex;
+    display:flex;
     flex-direction: column;
     height: 100%;
     background: #ffffff;
@@ -244,7 +249,7 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
+    /* padding: 12px 16px; */
     background: #f8f9fa;
     border-bottom: 1px solid #e9ecef;
 }
@@ -257,7 +262,8 @@ onBeforeUnmount(() => {
 
 .chat-actions {
     display: flex;
-    gap: 8px;
+    float: left;
+    /* gap: 8px; */
 }
 
 .action-btn {
@@ -280,8 +286,6 @@ onBeforeUnmount(() => {
     overflow-y: auto;
     padding: 16px;
     background-color: #ffffff;
-    min-height: 300px;
-    max-height: 400px;
 }
 
 .empty-state {
@@ -354,9 +358,7 @@ onBeforeUnmount(() => {
 }
 
 .emoji-picker {
-    position: absolute;
-    bottom: 100%;
-    left: 0;
+    position:re;
     background: white;
     border: 1px solid #e9ecef;
     border-radius: 4px;
@@ -390,6 +392,7 @@ onBeforeUnmount(() => {
     padding: 16px;
     background-color: #f8f9fa;
     border-top: 1px solid #e9ecef;
+    position: relative;
 }
 
 .input-wrapper {
@@ -446,6 +449,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 14px;
 }
 
 .send-btn:hover:not(:disabled) {

@@ -17,6 +17,11 @@ export default defineConfig({
         // 因为后端 API 接口不包含 /api 前缀
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/gameHub': {
+        target: 'http://localhost:5076',
+        ws: true, // 如果 SignalR 使用 WebSocket ，需开启此配置
+        changeOrigin: true
+      }
     },
   },
   resolve: {

@@ -18,11 +18,11 @@
       </div>
     </main>
 
-    <footer class="footer">
+    <!-- <footer class="footer">
       <div class="container">
         <p>&copy; 2025 你画我猜. All rights reserved.</p>
       </div>
-    </footer>
+    </footer> -->
   </div>
 </template>
 

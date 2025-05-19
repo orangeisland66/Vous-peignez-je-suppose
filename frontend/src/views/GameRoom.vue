@@ -2,7 +2,7 @@
   <div class="game-background">
     <div class="game-container">
       <!-- Header: Round & Painter & Timer -->
-      <header class="game-header">
+
         <div class="header-info">
           <div class="round-badge">
             <span class="round-label">当前回合</span>
@@ -12,19 +12,18 @@
             <div class="timer-icon">⏱</div>
             <span class="timer-text">{{ formatTime(timer) }}</span>
           </div>
-        </div>
+       
         <div class="painter-info">
-          <div class="painter-avatar">{{ currentPainter.charAt(0) }}</div>
+          <!-- <div class="painter-avatar">{{ currentPainter.charAt(0) }}</div> -->
           <span class="painter-name">{{ currentPainter }}</span>
         </div>
-      </header>
+      </div>
 
       <!-- Main Game Area -->
       <div class="main-content">
         <!-- Left Panel - Canvas -->
         <section class="canvas-panel">
           <div class="canvas-container">
-            <!-- 使用DrawingBoard组件替换原始Canvas -->
             <drawing-board
               ref="drawingBoard"
               :readonly="!isPainter"
@@ -33,56 +32,20 @@
             />
           </div>
           
-          <!-- Word Hint for Painter -->
-          <div v-if="isPainter" class="word-hint">
-            <div class="hint-label">当前词语</div>
-            <div class="target-word">{{ targetWord }}</div>
-          </div>
+
         </section>
 
-        <!-- Right Panel - Guesses -->
+        <!-- Right Panel - Chat -->
         <section class="guess-panel">
           <div class="panel-header">
-            <h2>猜词记录</h2>
-            <span class="guess-count">{{ guessList.length }} 条</span>
+            <h2>游戏聊天</h2>
           </div>
           
-          <!-- Guess Input -->
-          <div v-if="!isPainter" class="guess-input-container">
-            <div class="input-wrapper">
-              <input
-                v-model.trim="guessInput"
-                @keyup.enter="sendGuess"
-                placeholder="输入你的猜词..."
-                class="guess-input"
-              />
-              <button @click="sendGuess" class="send-btn">
-                <span class="send-icon">↗️</span>
-              </button>
-            </div>
-          </div>
-          
-          <!-- Guess List -->
-          <div class="guess-list-container">
-            <ul class="guess-list">
-              <li v-for="item in guessList" :key="item.username" class="guess-item">
-                <div class="guesser-avatar">{{ item.username.charAt(0) }}</div>
-                <div class="guess-content">
-                  <div class="guesser-name">{{ item.username }}</div>
-                  <div class="guess-word">{{ item.word }}</div>
-                </div>
-                <div class="guess-status">
-                  <span v-if="item.correct === true" class="status-icon correct">✓</span>
-                  <span v-else-if="item.correct === false" class="status-icon wrong">✗</span>
-                </div>
-              </li>
-            </ul>
-            
-            <div v-if="guessList.length === 0" class="no-guesses">
-              <div class="empty-icon">💭</div>
-              <p>还没有人猜词</p>
-            </div>
-          </div>
+          <Chat 
+            :isPainter="isPainter"
+            :targetWord="targetWord"
+            @guess-correct="handleCorrectGuess"
+          />
         </section>
       </div>
     </div>
@@ -90,54 +53,85 @@
 </template>
 
 <script>
-// 导入DrawingBoard组件
 import DrawingBoard from '@/components/game/DrawingBoard.vue';
+import Chat from '@/components/gameRoom/Chat.vue';
 
 export default {
   name: 'GameRoom',
   components: {
-    DrawingBoard // 注册DrawingBoard组件
+    DrawingBoard,
+    Chat
   },
   data() {
     return {
-      currentRound: 2,
-      currentPainter: 'Bob',
-      timer: 45,
-      targetWord: 'apple',
-      isPainter: true, // 根据实际逻辑设置
-      guessInput: '',
-      guessList: [
-        { username: 'Alice', word: 'apple', correct: false },
-        { username: 'Charlie', word: 'banana', correct: false }
-      ]
-    }
+      currentRound: 1,          // 当前回合数
+      currentPainter: 'Alice',   // 当前画师
+      timer: 60,                // 倒计时（秒）
+      targetWord: 'umbrella',   // 目标词语（实际从后端获取）
+      isPainter: true,         // 是否为画师（需根据业务逻辑动态设置）
+      isGameActive: true        // 游戏是否进行中
+    };
   },
   mounted() {
-    // TODO: 初始化从后端获取 isPainter、currentPainter、targetWord 等
+    // 模拟倒计时（实际需结合后端逻辑）
+    this.startTimer();
   },
   methods: {
+    // 格式化时间
     formatTime(sec) {
-      const m = String(Math.floor(sec / 60)).padStart(2, '0')
-      const s = String(sec % 60).padStart(2, '0')
-      return `${m}:${s}`
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      return `${m}:${s}`;
     },
-    sendGuess() {
-      if (!this.guessInput) return
-      // TODO: 发送猜词到后端
-      this.guessList.push({ username: '你', word: this.guessInput, correct: null })
-      this.guessInput = ''
+
+    // 处理猜对事件
+    handleCorrectGuess() {
+      this.isGameActive = false;
+      this.currentRound++; // 进入下一回合
+      this.resetGame();    // 重置游戏状态（示例逻辑）
+      
+      // 模拟切换画师（实际需与后端交互）
+      this.currentPainter = this.currentPainter === 'Alice' ? 'Bob' : 'Alice';
+      this.targetWord = this.getRandomWord(); // 随机新词语
+      this.timer = 60;
+      this.isPainter = !this.isPainter;
     },
-    // 处理来自DrawingBoard的事件
+
+    // 启动倒计时
+    startTimer() {
+      if (this.isGameActive && this.timer > 0) {
+        setTimeout(() => {
+          this.timer--;
+          this.startTimer();
+        }, 1000);
+      } else if (this.timer === 0 && this.isGameActive) {
+        this.isGameActive = false;
+        // 处理倒计时结束逻辑（如平局、切换画师等）
+      }
+    },
+
+    // 重置游戏状态
+    resetGame() {
+      this.$refs.drawingBoard.clearCanvas(); // 清空画布（需DrawingBoard组件支持）
+      // 其他重置逻辑...
+    },
+
+    // 随机词语示例（实际从词库获取）
+    getRandomWord() {
+      const words = ['apple', 'banana', 'umbrella', 'computer', 'flower'];
+      return words[Math.floor(Math.random() * words.length)];
+    },
+
+    // 绘图相关事件处理
     onStrokeCompleted(stroke) {
-      // TODO: 如果需要，可以将笔画数据发送到后端，以便同步给其他玩家
       console.log('笔画完成:', stroke);
+      // 如需同步到其他玩家，此处发送WebSocket消息
     },
     onCanvasCleared() {
-      // TODO: 通知后端画布已清空
       console.log('画布已清空');
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -160,8 +154,9 @@ export default {
 
 /* Base and Layout Styles */
 .game-background {
+  /* margin-top: 5%; */
   background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
-  min-height: 100vh;
+  /* height: calc(100vh - 300px); */
   width: 100vw;
   display: flex;
   justify-content: center;
@@ -172,7 +167,8 @@ export default {
 
 .game-container {
   width: 90%;
-  max-width: 1200px;
+  height: calc(100vh - 100px);
+  max-width: 1400px;
   background: white;
   border-radius: 24px;
   box-shadow: 0 10px 30px rgba(79, 70, 229, 0.1);
@@ -183,18 +179,19 @@ export default {
 
 /* Header Styles */
 .game-header {
-  padding: 20px 32px;
-  background: white;
-  border-bottom: 1px solid var(--gray-light);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  height: 60px; /* 原高度可能为 80px+，调小至 60px 或更小 */
+  padding: 0 20px; /* 减少左右内边距 */
+  /* 可选：压缩文字大小 */
+  font-size: 14px; 
+  
 }
 
 .header-info {
   display: flex;
+  height: 0px;
   align-items: center;
   gap: 20px;
+  /* margin-right: auto; */
 }
 
 .round-badge {
@@ -242,12 +239,13 @@ export default {
 
 .painter-info {
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 10px;
   background: var(--primary-lightest);
-  padding: 8px 16px;
+  padding: 8px 30px;
   border-radius: 50px;
   box-shadow: 0 2px 10px rgba(79, 70, 229, 0.1);
+  margin-left: auto;
 }
 
 .painter-avatar {
@@ -258,27 +256,31 @@ export default {
   color: white;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: center; 
   font-weight: 600;
   font-size: 16px;
+  margin-right: 8px; 
 }
 
 .painter-name {
   font-weight: 500;
   color: var(--primary-dark);
+  text-align: center; 
 }
 
 /* Main Content Layout */
 .main-content {
   display: flex;
-  height: 70vh;
-  min-height: 500px;
-  padding: 24px;
+  height: auto;
+  /* min-height: 600px; */
+  padding: 20px 0px;
+
   gap: 24px;
 }
 
 /* Canvas Panel Styles */
 .canvas-panel {
+  height: auto;
   flex: 2;
   position: relative;
   display: flex;
@@ -286,6 +288,7 @@ export default {
 }
 
 .canvas-container {
+  height: auto;
   flex: 1;
   display: flex;
   justify-content: center;
@@ -294,7 +297,7 @@ export default {
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  margin-bottom: 16px;
+  /* margin-bottom: 16px; */
 }
 
 .word-hint {
@@ -325,12 +328,14 @@ export default {
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
+  height: var(--panel-height);
+  /* max-height: 100vh;  */
   display: flex;
   flex-direction: column;
 }
 
 .panel-header {
-  padding: 20px 24px;
+  padding: 20px 20px;
   border-bottom: 1px solid var(--gray-light);
   display: flex;
   justify-content: space-between;
@@ -500,6 +505,7 @@ export default {
   font-size: 16px;
 }
 
+
 /* Responsive Adjustments */
 @media (max-width: 992px) {
   .main-content {
@@ -522,10 +528,15 @@ export default {
   }
 }
 
-@media (max-width: 768px) {
-  .game-container {
-    width: 95%;
+@media (max-width: 992px) {
+  .main-content {
+    flex-direction: column;
+    height: auto;
     padding: 16px;
+  }
+
+  .canvas-panel {
+    margin-bottom: 24px;
   }
 }
 </style>

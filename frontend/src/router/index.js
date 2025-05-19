@@ -19,63 +19,63 @@ const routes = [
   { 
     path: '/', 
     redirect: '/login',
-    beforeEnter:checkUserAuth
+    // beforeEnter:checkUserAuth
   },
   // 登陆页面
   { 
     path: '/login',
     name: 'Login', 
     component: Login, 
-    meta: { guest: true },
-    beforeEnter:checkUserAuth 
+    // meta: { guest: true },
+    // beforeEnter:checkUserAuth 
   },
   // 注册页面
   { 
     path: '/register', 
     name: 'Register', 
     component: Register, 
-    meta: { guest: true },
-    beforeEnter:checkUserAuth
+    // meta: { guest: true },
+    // beforeEnter:checkUserAuth
   },
   // 大厅页面
   { 
     path: '/lobby', 
     name: 'Lobby', 
     component: Lobby, 
-    meta: { requiresAuth: true },
-    beforeEnter:checkUserAuth 
+    // meta: { requiresAuth: true },
+    // beforeEnter:checkUserAuth 
   },
   // 创建游戏房间页面
   { 
     path: '/room/create', 
     name: 'CreateRoom', 
     component: CreateRoom, 
-    meta: { requiresAuth: true },
-    beforeEnter:checkUserAuth 
+    // meta: { requiresAuth: true },
+    // beforeEnter:checkUserAuth 
   },
   // 等待游戏开始页面
   { 
     path: '/room/:id/waiting', 
     name: 'WaitingRoom', 
     component: WaitingRoom, 
-    meta: { requiresAuth: true },
-    beforeEnter:checkRoomPermission
+    // meta: { requiresAuth: true },
+    // beforeEnter:checkRoomPermission
   },
   // 进入游戏页面
   { 
     path: '/room/:id/game', 
     name: 'GameRoom', 
     component: GameRoom, 
-    meta: { requiresAuth: true }, 
-    beforeEnter:checkGamePermission
+    // meta: { requiresAuth: true }, 
+    // beforeEnter:checkGamePermission
   },
   // 单轮游戏结束页面
   { 
     path: '/room/:id/round-result', 
     name: 'RoundResult', 
     component: RoundResult, 
-    meta: { requiresAuth: true },
-    beforeEnter:checkRoundResultPermission
+    // meta: { requiresAuth: true },
+    // beforeEnter:checkRoundResultPermission
   },
   // 游戏结束，显示最终分数页面
   {
@@ -83,23 +83,23 @@ const routes = [
     name: 'FinalScore', 
     component: FinalScore, 
     meta: { requiresAuth: true },
-    beforeEnter:checkGameEnded 
+    // beforeEnter:checkGameEnded 
   },
   // 设置页面
   { 
     path: '/settings', 
     name: 'Settings', 
     component: Settings, 
-    meta: { requiresAuth: true },
-    beforeEnter:checkUserAuth 
+    // meta: { requiresAuth: true },
+    // beforeEnter:checkUserAuth 
   },
   // 用户个人资料页面
   { 
     path: '/profile', 
     name: 'Profile', 
     component: Profile, 
-    meta: { requiresAuth: true },
-    beforeEnter:checkUserAuth
+    // meta: { requiresAuth: true },
+    // beforeEnter:checkUserAuth
   },
   // 404 页面
   { 
