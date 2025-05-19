@@ -1,5 +1,3 @@
-// E:/m_Documents/Project/Vous-peignez-je-suppose/frontend/src/services/apiService.js
-
 // 引入 Axios (如果还没有安装，请运行 npm install axios)
 import axios from 'axios';
 
@@ -21,20 +19,20 @@ const apiService = {
 
   // 示例：一个临时的 register 函数 (保留或根据需要修改)
    async register(userData) {
-     try {
-            const response = await axios.post('/api/user/register', userData);
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    //  console.log('Placeholder API call: register', userData);
-    //   // 模拟一个成功的注册响应
-    //  return Promise.resolve({
-    //    data: {
-    //      token: 'dummy-token-' + Math.random().toString(36).substr(2, 8),
-    //      userInfo: { id: 2, username: userData.username, avatar: '', score: 0, winCount: 0, totalGames: 0 }
-    //    }
-      // });
+    //  try {
+    //         const response = await axios.post('/api/user/register', userData);
+    //         return response;
+    //     } catch (error) {
+    //         throw error;
+    //     }
+     console.log('Placeholder API call: register', userData);
+      // 模拟一个成功的注册响应
+     return Promise.resolve({
+       data: {
+         token: 'dummy-token-' + Math.random().toString(36).substr(2, 8),
+         userInfo: { id: 2, username: userData.username, avatar: '', score: 0, winCount: 0, totalGames: 0 }
+       }
+      });
    },
 
    // 示例：一个临时的 updateGameStats 函数 (保留或根据需要修改)
