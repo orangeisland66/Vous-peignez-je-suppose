@@ -15,7 +15,28 @@ export function checkUserAuth(to, from, next) {
 
   return next()
 }
+export function checkRoundResultPermission(to, from, next) {
+  const isLoggedIn = !!localStorage.getItem('token')
+  if (!isLoggedIn) {
+    return next({ name: 'Login' })
+  }
 
+  const roomId = to.params.id
+  const userId = store.state.user?.id
+  const rooms = store.state.gameRoom?.rooms || []
+  const room = rooms.find(r => String(r.id) === String(roomId))
+
+  if (!room || !room.members.includes(userId)) {
+    return next({ name: 'Lobby' })
+  }
+
+  // 添加具体的回合结果权限检查逻辑
+  if (!room.showRoundResult) { // 假设存在 showRoundResult 标志
+    return next({ name: 'GameRoom', params: { id: roomId } })
+  }
+
+  return next()
+}
 export function checkRoomPermission(to, from, next) {
   // const isLoggedIn = !!localStorage.getItem('token')
   // if (!isLoggedIn) {
