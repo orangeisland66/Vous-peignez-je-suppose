@@ -79,6 +79,5 @@ export function checkGameEnded(to, from, next) {
   if (room.gameStatus !== 'ended') {
     return next({ name: 'GameRoom', params: { id: roomId } })
   }
-
   return next()
 }

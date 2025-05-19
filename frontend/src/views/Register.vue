@@ -71,7 +71,19 @@ export default {
         this.error = '两次输入的密码不一致'; return
       }
       // TODO: 注册逻辑
-      this.$router.push('/lobby')
+       this.$router.push('/lobby')
+      // const userData = {
+      //   Username: this.username,
+      //   Email: this.email,
+      //   PasswordHash: this.password
+      // };
+
+      // try {
+      //   await this.register(userData);
+      //   this.$router.push('/lobby');
+      // } catch (error) {
+      //   this.error = '注册失败，请稍后重试';
+      // }
     }
   }
 }
