@@ -131,7 +131,7 @@ export default {
     // 绘图相关事件处理
     // 在DrawingBoard组件中一笔绘制完成会调用这个函数
     // 在这里调用我的signalR中的函数，发送消息到后端
-    async onStrokeCompleted(stroke) {
+    onStrokeCompleted(stroke) {
 
       // 调试信息
       console.log('在GameRoom.vue的onStrokeCompleted函数中收到笔画:',stroke);

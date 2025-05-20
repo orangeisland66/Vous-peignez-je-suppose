@@ -264,6 +264,34 @@ export default {
             this.strokes.push(strokeData);
             this.redrawCanvas();
         })
+
+        // 注册接收撤销操作的回调
+        signalRService.registerUndoReceivedCallback(() => {
+            console.log('在DrawingBoard.vue的mounted函数中接收到撤销操作');
+            if(this.readonly) return;
+            if(this.strokes.length === 0) return;
+            const lastStroke = this.strokes.pop();
+            this.undoneStrokes.push(lastStroke);
+            this.redrawCanvas();
+            console.log('如果无法撤销，那就是这里有问题');
+        })
+
+        // 注册接收重做操作的回调
+        signalRService.registerRedoReceivedCallback(() => {
+            if(this.readonly) return;
+            if(this.undoneStrokes.length === 0) return;
+            const stroke = this.undoneStrokes.pop();
+            this.strokes.push(stroke);
+            this.redrawCanvas();
+        })
+
+        // 注册接收清空画布的回调
+        signalRService.registerClearReceivedCallback(() => {
+            if(this.readonly) return;
+            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.strokes = [];
+            this.undoneStrokes = [];
+        })
     },
     beforeDestroy() {
         window.removeEventListener('resize', this.resizeCanvas)
@@ -387,7 +415,7 @@ export default {
                     this.currentStroke = []
 
                     // 调试信息
-                    console.log('在DrawingBoard.vue的stopDrawing函数中发送笔画数据到GameRoom.vue', this.strokes[this.strokes.length-1])
+                    //console.log('在DrawingBoard.vue的stopDrawing函数中发送笔画数据到GameRoom.vue', this.strokes[this.strokes.length-1])
 
                     //this.$emit('stroke-completed', this.strokes[this.strokes.length - 1]) //会将这一段笔画发送到GameRoom.vue中
                     await signalRService.sendStroke(this.strokes[this.strokes.length-1])
@@ -395,7 +423,6 @@ export default {
                     // 调试信息
                     console.log('在DrawingBoard.vue的stopDrawing函数中发送笔画数据到SignalR服务', this.strokes[this.strokes.length-1])
                 }
-
             }
         },
 
@@ -432,6 +459,8 @@ export default {
             this.strokes = []
             this.undoneStrokes = []
             this.$emit('canvas-cleared')
+            // 同步到后端
+            signalRService.sendClear(1); //传入房间号
         },
 
         undo() {
@@ -441,6 +470,8 @@ export default {
             this.undoneStrokes.push(lastStroke)
             this.redrawCanvas()
             this.$emit('stroke-undone')
+            // 同步到后端
+            signalRService.sendUndo(1); //传入房间号
         },
 
         redo() {
@@ -450,6 +481,8 @@ export default {
             this.strokes.push(stroke)
             this.redrawCanvas()
             this.$emit('stroke-redone')
+            // 同步到后端
+            signalRService.sendRedo(1); //传入房间号
         },
 
         setBrushPreset(preset) {

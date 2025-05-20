@@ -16,6 +16,9 @@ class SignalRService {
 
     // 添加回调函数属性
     this.onStrokeReceivedCallback = null;
+    this.onRedoReceivedCallback = null;
+    this.onUndoReceivedCallback = null;
+    this.onClearReceivedCallback = null;
   }
 
   // 注册接收绘画数据的回调函数
@@ -23,6 +26,27 @@ class SignalRService {
   {
     this.onStrokeReceivedCallback = callback;
     console.log('注册了registerStrokeReceivedCallback函数');
+  }
+  
+  // 注册接收重做操作的回调函数
+  registerRedoReceivedCallback(callback)
+  {
+    this.onRedoReceivedCallback = callback;
+    console.log('注册了registerRedoReceivedCallback函数');
+  }
+
+  // 注册接收撤销操作的回调函数
+  registerUndoReceivedCallback(callback)
+  {
+    this.onUndoReceivedCallback = callback;
+    console.log('注册了registerUndoReceivedCallback函数');
+  }
+
+  // 注册接收清空操作的回调函数
+  registerClearReceivedCallback(callback)
+  {
+    this.onClearReceivedCallback = callback;
+    console.log('注册了registerClearReceivedCallback函数');
   }
 
   // 初始化并启动连接
@@ -78,6 +102,56 @@ class SignalRService {
       console.log('现在在signalRService的ReceiveStroke函数中，receivedStrokes已经修改');
       }
     });
+
+    // 注册接收撤销操作的处理函数
+    this.hubConnection.on('ReceiveUndo', (data) => {
+      console.log('现在在signalRService的ReceiveUndo函数中,接收到撤销操作');
+
+      //调试信息
+      //console.log('现在我正要进入onUndoReceivedCallback函数');
+
+      // 调用回调函数通知DrawingBoard组件
+      if(this.onUndoReceivedCallback){
+        //console.log('现在我进入了onUndoReceivedCallback函数');
+        this.onUndoReceivedCallback(); // 这里显示我成功进来了
+        console.log('调用了回调函数onUndoReceivedCallback');
+      }
+      // else
+      // {
+      //   console.log('现在我没有进入onUndoReceivedCallback函数');
+      // }
+
+      // 调试信息
+      console.log('现在在signalRService的ReceiveUndo函数中'); // 在这个地方
+    });
+
+    // 注册接收重做操作的处理函数
+    this.hubConnection.on('ReceiveRedo', (data) => {
+      console.log('现在在signalRService的ReceiveRedo函数中，接收到重做操作');
+
+      // 调用回调函数通知DrawingBoard组件
+      if(this.onRedoReceivedCallback){
+        this.onRedoReceivedCallback();
+        console.log('调用了回调函数onRedoReceivedCallback');
+      }
+
+      // 调试信息
+      console.log('现在在signalRService的ReceiveRedo函数中');
+    })
+
+    // 注册接收清空操作的处理函数
+    this.hubConnection.on('ReceiveClear', (data) => {
+      console.log('现在在signalRService的ReceiveClear函数中，接收到清空操作');
+
+      // 调用回调函数通知DrawingBoard组件
+      if(this.onClearReceivedCallback){
+        this.onClearReceivedCallback();
+        console.log('调用了回调函数onClearReceivedCallback');
+      }
+
+      // 调试信息
+      console.log('现在在signalRService的ReceiveClear函数中');
+    })
 
     // 处理连接状态变化
     this.hubConnection.onclose(() => {
@@ -162,6 +236,67 @@ class SignalRService {
       return false;
     }
   }
+
+  // 发送撤销操作
+  async sendUndo(roomId) {
+    // 调试信息
+    console.log('现在在signalRService的sendUndo方法中,正在发送撤销操作');
+    
+    if(!this.isConnected.value || !this.hubConnection) {
+      console.error('SignalR 连接未建立');
+      return false;
+    }
+
+    try{
+      // 传递当前房间ID
+      await this.hubConnection.invoke('SendUndo',this.currentRoomId.value);
+      return true;
+    } catch(error){
+      console.error('发送撤销操作失败:', error);
+      return false;
+    }
+  }
+
+  // 发送重做操作
+  async sendRedo(roomId) {
+    // 调试信息
+    console.log('现在在signalRService的sendRedo方法中，正在发送重做操作');
+
+    if(!this.isConnected.value || !this.hubConnection) {
+      console.error('SignalR 连接未建立');
+      return false;
+    }
+
+    try{
+      // 传递当前房间ID
+      await this.hubConnection.invoke('SendRedo', this.currentRoomId.value);
+      return true;
+    } catch(error){
+      console.error('发送重做操作失败:', error);
+      return false;
+    }
+  }
+
+  // 发送清空画布操作
+  async sendClear(roomId){
+    // 调试信息
+    console.log('现在在signalRService的sendClear方法中，正在发送清空画布操作');
+
+    if(!this.isConnected.value || !this.hubConnection) {
+      console.error('SignalR 连接未建立');
+      return false;
+    }
+
+    try{
+      // 传递当前房间ID
+      await this.hubConnection.invoke('SendClear', this.currentRoomId.value);
+      return true;
+    } catch(error){
+      console.error('发送清空画布操作失败:', error);
+      return false;
+    }
+  }
+
 }
 
 // 创建单例实例

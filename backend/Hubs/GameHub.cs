@@ -389,6 +389,114 @@ namespace backend.Hubs
 
             Console.WriteLine($"绘画数据已发送，房间ID：{roomId}，玩家ID：{playerId}");
         }
+
+        // 接收客户端发送的撤销操作，并广播到房间内的所有玩家
+        public async Task SendUndo(int roomId)
+        {
+            Console.WriteLine($"收到撤销操作，房间ID：{roomId}");
+
+            // 从链接映射中获取玩家 ID（确保已加入房间）
+            // if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            // {
+            //     await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+            //     return;
+            // }
+            // 测试用：硬编码玩家 ID（玩家一的 ID 假设为 1）
+            int playerId = 1; // 确保数据库中有ID为1的玩家
+
+            // 假设从数据库获取玩家用户名（测试时可固定为已知用户名）
+            var player = new Player { Id = playerId, Username = "玩家一" };
+
+            // 假设从服务中获取玩家用户名（需根据实际业务调整）
+            // var player = await _gameRoomService.GetPlayerByIdAsync(playerId);
+            if (player == null)
+            {
+                await Clients.Caller.SendAsync("PlayerNotFound", "玩家信息不存在");
+                return;
+            }
+
+            // 保存到数据库
+            // await _gameRoomService.SaveStrokeDataAsync(roomId, strokeInfo);
+
+            // 广播绘画数据给房间内所有玩家
+            // await Clients.Group(roomId.ToString()).SendAsync("ReceiveStroke", strokeInfo);
+            await Clients.All.SendAsync("ReceiveUndo");
+
+            // 调试信息
+            Console.WriteLine($"撤销操作已发送，房间ID：{roomId}，玩家ID：{playerId}");
+        }
+
+        // 接收客户端发送的重做操作，并广播到房间内的所有玩家
+        public async Task SendRedo(int roomId)
+        {
+            Console.WriteLine($"收到重做操作，房间ID：{roomId}");
+
+            // 从链接映射中获取玩家 ID（确保已加入房间）
+            // if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            // {
+            //     await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+            //     return;
+            // }
+            // 测试用：硬编码玩家 ID（玩家一的 ID 假设为 1）
+            int playerId = 1; // 确保数据库中有ID为1的玩家
+
+            // 假设从数据库获取玩家用户名（测试时可固定为已知用户名）
+            var player = new Player { Id = playerId, Username = "玩家一" };
+
+            // 假设从服务中获取玩家用户名（需根据实际业务调整）
+            // var player = await _gameRoomService.GetPlayerByIdAsync(playerId);
+            if (player == null)
+            {
+                await Clients.Caller.SendAsync("PlayerNotFound", "玩家信息不存在");
+                return;
+            }
+
+            // 保存到数据库
+            // await _gameRoomService.SaveStrokeDataAsync(roomId, strokeInfo);
+
+            // 广播绘画数据给房间内所有玩家
+            // await Clients.Group(roomId.ToString()).SendAsync("ReceiveStroke", strokeInfo);
+            await Clients.All.SendAsync("ReceiveRedo");
+
+            // 调试信息
+            Console.WriteLine($"重做操作已发送，房间ID：{roomId}，玩家ID：{playerId}");
+        }
+        
+        // 接收客户端发送的清空操作，并广播到房间内的所有玩家
+        public async Task SendClear(int roomId)
+        {
+            Console.WriteLine($"收到清空操作，房间ID：{roomId}");
+
+            // 从链接映射中获取玩家 ID（确保已加入房间）
+            // if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+            // {
+            //     await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
+            //     return;
+            // }
+            // 测试用：硬编码玩家 ID（玩家一的 ID 假设为 1）
+            int playerId = 1; // 确保数据库中有ID为1的玩家
+
+            // 假设从数据库获取玩家用户名（测试时可固定为已知用户名）
+            var player = new Player { Id = playerId, Username = "玩家一" };
+
+            // 假设从服务中获取玩家用户名（需根据实际业务调整）
+            // var player = await _gameRoomService.GetPlayerByIdAsync(playerId);
+            if (player == null)
+            {
+                await Clients.Caller.SendAsync("PlayerNotFound", "玩家信息不存在");
+                return;
+            }
+
+            // 保存到数据库
+            // await _gameRoomService.SaveStrokeDataAsync(roomId, strokeInfo);
+
+            // 广播绘画数据给房间内所有玩家
+            // await Clients.Group(roomId.ToString()).SendAsync("ReceiveStroke", strokeInfo);
+            await Clients.All.SendAsync("ReceiveClear");
+
+            // 调试信息
+            Console.WriteLine($"清空操作已发送，房间ID：{roomId}，玩家ID：{playerId}");
+        }
     }
 }
 
