@@ -55,6 +55,7 @@
 <script>
 import DrawingBoard from '@/components/game/DrawingBoard.vue';
 import Chat from '@/components/gameRoom/Chat.vue';
+//import signalRService from '@/services/signalRService.js'; // 引入signalRService
 
 export default {
   name: 'GameRoom',
@@ -69,8 +70,13 @@ export default {
       timer: 60,                // 倒计时（秒）
       targetWord: 'umbrella',   // 目标词语（实际从后端获取）
       isPainter: true,         // 是否为画师（需根据业务逻辑动态设置）
-      isGameActive: true        // 游戏是否进行中
+      isGameActive: true,        // 游戏是否进行中
     };
+  },
+  computed:{
+    // remoteStrokes(){
+    //   return signalRService.remoteStrokes;
+    // }
   },
   mounted() {
     // 模拟倒计时（实际需结合后端逻辑）
@@ -123,9 +129,25 @@ export default {
     },
 
     // 绘图相关事件处理
-    onStrokeCompleted(stroke) {
-      console.log('笔画完成:', stroke);
+    // 在DrawingBoard组件中一笔绘制完成会调用这个函数
+    // 在这里调用我的signalR中的函数，发送消息到后端
+    async onStrokeCompleted(stroke) {
+
+      // 调试信息
+      console.log('在GameRoom.vue的onStrokeCompleted函数中收到笔画:',stroke);
+
       // 如需同步到其他玩家，此处发送WebSocket消息
+      if(!this.isPainter || !stroke) return;
+      
+      // 调试信息
+      console.log('在GameRoom.vue的onStrokeCompleted中开始调用SignalR发送消息');
+      // 前端不做连接判断，等到signalR中判断
+      // //通过signalR发送消息到后端
+      // if(!this.signalRService.isConnected.value){
+      //   console.warn('SignalR未连接,无法发送笔画');
+      //   return;
+      // }
+      //await signalRService.sendStroke(stroke);
     },
     onCanvasCleared() {
       console.log('画布已清空');

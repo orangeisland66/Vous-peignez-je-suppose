@@ -157,6 +157,7 @@
 </template>
 
 <script>
+import signalRService from '@/services/signalRService.js'
 export default {
     name: 'DrawingBoard',
     props:
@@ -165,8 +166,26 @@ export default {
         {
             type: Boolean,
             default: false
+        },
+        remoteStrokes:
+        {
+            type: Array,
+            default: () => []
         }
     },
+    // watch:{
+    //     remoteStrokes:{
+    //         handler(newStrokes){
+
+    //             // 调试信息
+    //             console.log('在DrawingBoard.vue的remoteStrokes监听器中接收到远程笔画数据改变');
+                
+    //             this.strokes = [...newStrokes];
+    //             this.redrawCanvas();
+    //         },
+    //         deep:true
+    //     }
+    // },
     data() {
         return {
             isDrawing: false,
@@ -218,6 +237,15 @@ export default {
             return this.undoneStrokes.length > 0
         }
     },
+    watch:{
+        remoteStrokes:{
+            handler(newStrokes){
+                this.strokes = [...newStrokes];
+                this.redrawCanvas();
+            },
+            deep: true
+        }
+    },
     mounted() {
         this.initializeCanvas()
         window.addEventListener('resize', this.resizeCanvas)
@@ -229,6 +257,13 @@ export default {
             canvasEl.addEventListener('mouseenter', ()=>{this.showCustomCursor = true})
             canvasEl.addEventListener('mouseleave', ()=>{this.showCustomCursor = false})
         } 
+
+        // 注册接收远程笔画的回调
+        signalRService.registerStrokeReceivedCallback((strokeData) => {
+            console.log('在DrawingBoard.vue的mounted函数中接收到远程笔画数据', strokeData);
+            this.strokes.push(strokeData);
+            this.redrawCanvas();
+        })
     },
     beforeDestroy() {
         window.removeEventListener('resize', this.resizeCanvas)
@@ -342,15 +377,25 @@ export default {
             this.currentY = y
         },
 
-        stopDrawing() {
+        async stopDrawing() {
             if (this.isDrawing) {
                 this.isDrawing = false
                 if (this.currentStroke.length > 0) {
                     this.strokes.push([...this.currentStroke])
                     this.undoneStrokes = [] // 清空重做栈
+                    // 重置当前笔画
                     this.currentStroke = []
-                    this.$emit('stroke-completed', this.strokes[this.strokes.length - 1])
+
+                    // 调试信息
+                    console.log('在DrawingBoard.vue的stopDrawing函数中发送笔画数据到GameRoom.vue', this.strokes[this.strokes.length-1])
+
+                    //this.$emit('stroke-completed', this.strokes[this.strokes.length - 1]) //会将这一段笔画发送到GameRoom.vue中
+                    await signalRService.sendStroke(this.strokes[this.strokes.length-1])
+
+                    // 调试信息
+                    console.log('在DrawingBoard.vue的stopDrawing函数中发送笔画数据到SignalR服务', this.strokes[this.strokes.length-1])
                 }
+
             }
         },
 
@@ -438,6 +483,8 @@ export default {
     }
 }
 </script>
+
+
 
 <style scoped>
 .drawing-board-container {
