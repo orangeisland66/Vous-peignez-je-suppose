@@ -1,6 +1,6 @@
 <template>
   <div class="app">
-    <nav class="navbar">
+    <nav class="navbar" :class="{ show: showNavbar }">
       <div class="container">
         <router-link to="/lobby" class="logo">你画我猜</router-link>
         <div class="nav-links">
@@ -17,19 +17,29 @@
         <router-view />
       </div>
     </main>
-
-    <!-- <footer class="footer">
-      <div class="container">
-        <p>&copy; 2025 你画我猜. All rights reserved.</p>
-      </div>
-    </footer> -->
   </div>
 </template>
 
 <script>
 export default {
-  name: 'App'
-}
+  name: 'App',
+  data() {
+    return {
+      showNavbar: false
+    };
+  },
+  mounted() {
+    document.addEventListener('mousemove', this.handleMouseMove);
+  },
+  beforeUnmount() {
+    document.removeEventListener('mousemove', this.handleMouseMove);
+  },
+  methods: {
+    handleMouseMove(e) {
+      this.showNavbar = e.clientY < 60;
+    }
+  }
+};
 </script>
 
 <style>
@@ -37,6 +47,8 @@ export default {
   --dai-green: #426666;
   --dai-green-light: #587878;
   --dai-green-lighter: #e8f0f0;
+  --navbar-bg: rgba(255, 255, 255, 0.6);
+  --navbar-blur: blur(10px);
   --text-dark: #2c3e50;
   --container-width: 100%;
   --container-padding: 0 20px;
@@ -50,7 +62,9 @@ export default {
   -webkit-overflow-scrolling: touch;
 }
 
-body, html, #app {
+body,
+html,
+#app {
   font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   height: 100%;
   margin: 0;
@@ -83,27 +97,37 @@ body, html, #app {
   box-sizing: border-box;
 }
 
+/* ===== NAVBAR ===== */
 .navbar {
-  background-color: white;
-  box-shadow: 0 4px 12px rgba(66, 102, 102, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  border-bottom: 1px solid var(--dai-green-lighter);
+  position: fixed;
+  top: -80px;
+  left: 0;
   width: 100%;
-  height: 80px;
+  height: 48px;
+  padding: 4px;
+  background-color: var(--navbar-bg);
+  backdrop-filter: var(--navbar-blur);
+  -webkit-backdrop-filter: var(--navbar-blur);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 20px rgba(66, 102, 102, 0.1);
+  z-index: 1000;
+  transition: top 0.3s ease;
 }
 
-.navbar .container {
-  height: 100%;
+.navbar.show {
+  top: 0;
 }
 
 .logo {
   font-size: 24px;
-  font-weight: bold;
-  color: #e60000;
+  font-weight: 600;
+  color: var(--dai-green);
   text-decoration: none;
-  padding: 0 10px;
+  transition: opacity 0.2s;
+}
+
+.logo:hover {
+  opacity: 0.7;
 }
 
 .nav-links {
@@ -112,25 +136,26 @@ body, html, #app {
 }
 
 .nav-link {
-  color: #333;
+  color: var(--text-dark);
   text-decoration: none;
   font-size: 16px;
-  transition: color 0.3s, transform 0.2s;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius: 6px;
+  transition: background 0.3s, transform 0.2s, color 0.3s;
 }
 
 .nav-link:hover {
-  color: #e60000;
-  background-color: rgba(230, 0, 0, 0.05);
+  background-color: rgba(88, 120, 120, 0.1);
   transform: translateY(-2px);
+  color: var(--dai-green);
 }
 
+/* ===== MAIN CONTENT ===== */
 .main-content {
   flex: 1;
   display: flex;
   width: 100%;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .main-container {
@@ -138,20 +163,8 @@ body, html, #app {
   width: 100%;
   height: 100%;
   justify-content: flex-start;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
-}
-
-.footer {
-  background-color: #f9f9f9;
-  color: #777;
-  padding: 15px 0;
-  font-size: 14px;
-  border-top: 1px solid #e0e0e0;
-  width: 100%;
-}
-
-.footer .container {
-  justify-content: center;
+  padding-top: 0;
 }
 </style>

@@ -40,30 +40,29 @@
             <h2>可用房间</h2>
             <span class="rooms-count">{{ rooms.length }} 个房间</span>
           </div>
-          
+
           <div class="room-list-container">
             <div v-if="rooms.length === 0" class="no-rooms">
               <div class="empty-icon">🏠</div>
               <p>暂无可用房间</p>
               <button @click="createRoom" class="create-now-btn">立即创建</button>
             </div>
-            
+
             <ul v-else class="room-list">
               <li v-for="room in rooms" :key="room.id" class="room-card">
                 <div class="room-card-content">
-                  <div class="room-name">{{ room.name }}</div> <!-- 修改这里，显示房间名称 -->
+                  <div class="room-name">{{ room.name }}</div>
                   <div class="room-code">房间号: {{ room.roomId }}</div>
                   <div class="room-capacity">
                     <div class="capacity-bar">
-                      <div class="capacity-fill" :style="{width: (room.players.length/room.maxPlayers)*100 + '%'}"></div>
+                      <div class="capacity-fill"
+                        :style="{ width: (room.players.length / room.maxPlayers) * 100 + '%' }">
+                      </div>
                     </div>
                     <div class="capacity-text">人数:{{ room.players.length }}/{{ room.maxPlayers }}</div>
                   </div>
-                  <button
-                    v-if="room.players.length < room.maxPlayers"
-                    @click="joinRoom(room.id)"
-                    class="join-btn"
-                  >加入游戏</button>
+                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.id)"
+                    class="join-btn">加入游戏</button>
                   <div v-else class="full-badge">房间已满</div>
                 </div>
               </li>
@@ -150,12 +149,14 @@ export default {
 .lobby-background {
   background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: var(--dark);
+  padding: 20px 0;
+  overflow: hidden;
 }
 
 .lobby-container {
@@ -167,6 +168,8 @@ export default {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: 90vh;
+  max-height: 800px;
 }
 
 /* Header Styles */
@@ -266,10 +269,10 @@ export default {
 /* Main Content Layout */
 .main-content {
   display: flex;
-  height: 70vh;
-  min-height: 500px;
+  flex: 1;
   padding: 24px;
   gap: 24px;
+  overflow: hidden;
 }
 
 /* Action Panel Styles */
@@ -278,6 +281,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .action-card {
@@ -363,6 +367,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .panel-header h2 {
@@ -385,22 +390,43 @@ export default {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-light) var(--gray-light);
+}
+
+/* Custom scrollbar styles */
+.room-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.room-list-container::-webkit-scrollbar-track {
+  background: var(--gray-light);
+  border-radius: 4px;
+}
+
+.room-list-container::-webkit-scrollbar-thumb {
+  background: var(--primary-light);
+  border-radius: 4px;
+}
+
+.room-list-container::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
 }
 
 .room-name {
-  font-size: 20px; /* 调整字体大小，使其更大 */
+  font-size: 20px;
   font-weight: 600;
   color: var(--dark);
-  margin-bottom: 4px; /* 添加底部外边距，与 RoomId 分隔 */
+  margin-bottom: 4px;
 }
 
 .room-code {
-  font-size: 14px; /* 房间 RoomId 的字体大小，比 18px 小 */
-  color: var(--gray); /* 使用灰色，使其不那么醒目 */
-  margin-top: 4px; /* 在房间名称下方留一点空间 */
-  font-weight: 400; /* 可以设置为普通字体粗细 */
+  font-size: 14px;
+  color: var(--gray);
+  margin-top: 4px;
+  font-weight: 400;
 }
-
 
 .no-rooms {
   height: 100%;
@@ -469,12 +495,6 @@ export default {
   gap: 14px;
 }
 
-.room-id {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--dark);
-}
-
 .room-capacity {
   display: flex;
   flex-direction: column;
@@ -534,14 +554,26 @@ export default {
     flex-direction: column;
     height: auto;
   }
-  
+
   .action-panel {
     width: 100%;
     flex-direction: row;
+    flex-shrink: 0;
   }
-  
+
   .room-list {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+
+  .room-panel {
+    flex: 1;
+    min-height: 400px;
+  }
+
+  .lobby-container {
+    height: auto;
+    max-height: none;
+    min-height: 90vh;
   }
 }
 
@@ -549,12 +581,12 @@ export default {
   .lobby-container {
     width: 95%;
   }
-  
+
   .lobby-header {
     flex-direction: column;
     gap: 16px;
   }
-  
+
   .action-panel {
     flex-direction: column;
   }
