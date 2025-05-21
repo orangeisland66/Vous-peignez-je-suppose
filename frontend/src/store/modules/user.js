@@ -81,6 +81,11 @@ const actions = {
       // 这里应该是API请求，暂时使用注释代替
       // const response = await apiService.login(credentials)
       // const {token, userInfo} = response.data
+      const response = await apiService.login(credentials);
+      const { Token: token, UserId: id, Username: username } = response.data;
+      const userInfo = { id, username, avatar: '', score: 0, winCount: 0, totalGames: 0 };
+      
+
 
       commit('SET_USER_INFO', userInfo);
       commit('SET_TOKEN', token);
@@ -120,6 +125,13 @@ const actions = {
     {
       throw error;
     }
+    // try {
+    //         const response = await apiService.register(userData);
+    //         return response;
+    //     } catch (error) {
+    //         console.error('注册API错误:', error);
+    //         throw error;
+    //     }
   },
   
   // 登出操作
