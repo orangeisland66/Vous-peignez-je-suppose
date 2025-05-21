@@ -7,14 +7,13 @@ const API_BASE_URL = '/api'; // 根据你的后端实际地址修改
 const apiService = {
   // 示例：一个临时的 login 函数 (保留或根据需要修改)
   async login(credentials) {
-    console.log('Placeholder API call: login', credentials);
-    // 模拟一个成功的登录响应
-    return Promise.resolve({
-      data: {
-        token: 'dummy-token-' + Math.random().toString(36).substr(2, 8), // 模拟一个随机token
-        userInfo: { id: 1, username: credentials.username, avatar: '', score: 0, winCount: 0, totalGames: 0 }
-      }
-    });
+     try {
+      const response = await axios.post(`${API_BASE_URL}/users/login`, credentials);
+      return response;
+    } catch (error) {
+      console.error('登录请求出错:', error);
+      throw error;
+    }
   },
 
    async register(userData) {

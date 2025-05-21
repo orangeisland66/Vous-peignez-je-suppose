@@ -55,6 +55,37 @@ namespace backend.Services
         }
 
          // 密码加密方法
+        // HashPassword method is defined below, so this duplicate is removed.
+
+        // 用户登录
+                // 用户登录
+        // 修改方法签名，接收明文密码
+       public async Task<User> LoginAsync(string username, string email, string password)
+        {
+            User user = null;
+            if (!string.IsNullOrEmpty(username))
+            {
+                user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            }
+            else if (!string.IsNullOrEmpty(email))
+            {
+                user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            }
+
+            if (user != null && VerifyPassword(password, user.PasswordHash))
+            {
+                return user;
+            }
+
+            return null;
+        }
+
+        private bool VerifyPassword(string password, string passwordHash)
+        {
+            string hashedPassword = HashPassword(password);
+            return hashedPassword == passwordHash;
+        }
+
         private string HashPassword(string password)
         {
             using (SHA256 sha256Hash = SHA256.Create())
@@ -69,45 +100,6 @@ namespace backend.Services
                 return builder.ToString();
             }
         }
-
-        // 用户登录
-                // 用户登录
-        // 修改方法签名，接收明文密码
-        public async Task<User?> LoginAsync(string username, string plainPassword)
-        {
-            // 查找用户
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
-
-            // 如果用户不存在，返回 null
-            if (user == null)
-            {
-                return null;
-            }
-
-            // 对用户输入的明文密码进行哈希
-            var providedPasswordHash = HashPassword(plainPassword);
-
-            // 比较哈希值
-            if (user.PasswordHash == providedPasswordHash)
-            {
-                // 登录成功，可以更新最后登录时间和在线状态
-                user.LastLoginAt = DateTime.UtcNow;
-                user.isOnline = true;
-                await _context.SaveChangesAsync();
-
-                return user; // 哈希匹配，返回用户
-            }
-            else
-            {
-                return null; // 哈希不匹配
-            }
-        }
-
-        // public async Task<User> LoginAsync(string username, string passwordHash)
-        // {
-        //     var hashedPassword = HashPassword(passwordHash);
-        //     return await _context.Users.FirstOrDefaultAsync(u => u.Username == username && u.PasswordHash == hashedPassword);
-        // }
 
         // 更新用户资料
         public async Task<User> UpdateProfileAsync(User user)

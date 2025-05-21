@@ -42,14 +42,14 @@ namespace backend.Controllers
                 // **5. 返回成功响应**
                 // 返回 201 Created，表示资源已创建成功
                 // 返回一个包含 message 属性的匿名对象，以及一些非敏感的用户信息
-                 return CreatedAtAction(nameof(GetUserProfile), new { userId = result.Id }, // 可以跳转到 GetUserProfile 路由
-                    new { message = "注册成功", userId = result.Id, username = result.Username, email = result.Email });
+                return CreatedAtAction(nameof(GetUserProfile), new { userId = result.Id }, // 可以跳转到 GetUserProfile 路由
+                   new { message = "注册成功", userId = result.Id, username = result.Username, email = result.Email });
 
             }
             catch (ArgumentException ex)
             {
                 // 捕获 UserService 可能抛出的 ArgumentException (例如，如果 Service 层也做了重复检查)
-                 return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
@@ -57,15 +57,16 @@ namespace backend.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] UserLoginRequest loginRequest)
         {
-            if (loginRequest == null || string.IsNullOrEmpty(loginRequest.Username) || string.IsNullOrEmpty(loginRequest.Password))
+            if (loginRequest == null || (string.IsNullOrEmpty(loginRequest.Username)&& string.IsNullOrEmpty(loginRequest.Email)) || string.IsNullOrEmpty(loginRequest.Password))
             {
-                return BadRequest("用户名和密码不能为空");
+                return BadRequest("用户名/邮箱和密码不能为空");
             }
 
-            var user = await _userService.LoginAsync(loginRequest.Username, loginRequest.Password);
+            var user = await _userService.LoginAsync(loginRequest.Username, loginRequest.Email, loginRequest.Password);
             if (user != null)
             {
                 // 这里应该生成JWT token
+                //var token = GenerateJwtToken(user);
                 return Ok(new { Message = "登录成功", UserId = user.Id });
             }
             else
@@ -78,19 +79,20 @@ namespace backend.Controllers
         // [Authorize] // 通常需要认证才能获取自己的资料
         public async Task<IActionResult> GetUserProfile(int userId)
         {
-             // **重要：在实际应用中，这里应该从认证信息中获取当前用户ID，而不是从查询参数或请求体中获取**
-             // 例如：var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-             // if (currentUserId == null || int.Parse(currentUserId) != userId) { return Forbid(); } // 或者 Unauthorized/Forbidden
+            // **重要：在实际应用中，这里应该从认证信息中获取当前用户ID，而不是从查询参数或请求体中获取**
+            // 例如：var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            // if (currentUserId == null || int.Parse(currentUserId) != userId) { return Forbid(); } // 或者 Unauthorized/Forbidden
 
             try
             {
                 var user = await _context.Users.FindAsync(userId); // 直接从 DbContext 获取用户，或者调用 UserService 的方法
-                 if (user == null)
+                if (user == null)
                 {
                     return NotFound(new { Message = "用户不存在" });
                 }
                 // 返回用户资料的 DTO 或匿名对象 (不要包含 PasswordHash)
-                return Ok(new {
+                return Ok(new
+                {
                     UserId = user.Id,
                     Username = user.Username,
                     Email = user.Email,
@@ -156,6 +158,8 @@ namespace backend.Controllers
     public class UserLoginRequest
     {
         public string? Username { get; set; }
+        public string? Email { get; set; }
         public string? Password { get; set; }
+        
     }
 }
