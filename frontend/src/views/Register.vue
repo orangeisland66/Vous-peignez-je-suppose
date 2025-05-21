@@ -50,6 +50,8 @@
 </template>
 
 <script>
+// 导入 apiService
+import apiService from '@/services/apiService';
 export default {
   data() {
     return {
@@ -96,13 +98,23 @@ export default {
     toRegister() {
       this.$router.push('/register')
     },
-    handleRegister() {
+    async handleRegister() { // 标记为 async
+      console.log('handleRegister method called.');
+
+      // 清除之前的错误信息
+      this.error = '';
+      this.usernameError = '';
+      this.passwordError = '';
+      this.confirmPasswordError = '';
+
+      // 基础前端校验
       this.validateUsername();
       this.validatePassword();
       this.validateConfirmPassword();
 
       if (this.usernameError || this.passwordError || this.confirmPasswordError) {
-        return;
+         this.error = '请检查输入信息'; // 如果有前端验证错误，显示提示
+         return;
       }
 
       if (!this.username || !this.email || !this.password || !this.confirmPassword) {
@@ -115,8 +127,44 @@ export default {
         return;
       }
 
-      // TODO: 注册逻辑
-      this.$router.push('/lobby');
+      try {
+        // **准备发送给后端的数据**
+        // 创建一个对象，包含 username, email, 和 passwordHash (值为明文密码)
+        // 这里的属性名需要与后端 User 实体中希望接收的属性名一致
+        const registrationData = {
+          username: this.username,
+          email: this.email,
+          passwordHash: this.password, // **重要：字段名是 passwordHash，但值是明文密码**
+          // 确认密码不需要发送给后端
+          // 注意：不要在这里发送 Id, CreatedAt, Status 等后端管理的属性
+          Role: "User", // 根据业务逻辑设置默认角色
+          userRole: "Player", // 根据业务逻辑设置默认用户角色
+          AvatarUrl: "", // 根据业务逻辑设置默认头像 URL (例如空字符串或默认图片链接)
+        };
+
+        console.log('Sending registration data to API:', registrationData);
+
+        // **调用后端注册接口**
+        // apiService.register 会返回后端成功响应的数据，或者在失败时抛出封装好的 Error
+        const result = await apiService.register(registrationData);
+
+        console.log('Registration successful:', result);
+
+        // **处理后端成功响应**
+        // 假设后端成功时返回 { message: "注册成功", ... }
+        this.$toast?.success(result.message || '注册成功，请登录') || alert(result.message || '注册成功，请登录');
+
+        // 注册成功后跳转到登录页面
+        this.$router.push('/login');
+
+      } catch (error) {
+        // **处理注册失败的情况 (包括后端返回的错误和网络错误)**
+        console.error('注册失败:', error);
+        // apiService 中的 register 函数已经将后端错误或网络错误封装成 Error 对象并抛出
+        // 直接使用 error.message 来获取错误信息
+        this.error = error.message || '注册失败，未知错误'; // 在页面上显示错误信息
+        this.$toast?.error(this.error); // 如果有 toast 组件也显示
+      }
     }
   }
 }
