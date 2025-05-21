@@ -187,7 +187,7 @@ export default {
         { label: '日常', value: 'daily', icon: '☂️' },
         { label: '电影', value: 'movie', icon: '🎬' },
         { label: '地名', value: 'place', icon: '🏙️' },
-        { label: '自定义', value: 'custom', icon: '✏️' }
+        { label: '武汉大学', value: 'custom', icon: '🏫' }
       ]
     }
   },
