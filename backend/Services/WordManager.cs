@@ -32,10 +32,6 @@ namespace backend.Services
                 query = query.Where(w => w.Category == category);
             }
 
-            if (!string.IsNullOrEmpty(difficulty))
-            {
-                query = query.Where(w => w.Difficulty == difficulty);
-            }
 
             return await query.OrderBy(w => Guid.NewGuid()).FirstOrDefaultAsync();
         }
@@ -59,5 +55,27 @@ namespace backend.Services
             _context.Entry(word).State = EntityState.Modified;
             await _context.SaveChangesAsync();
         }
+
+        /// <summary>
+        /// 创建多个词汇
+        /// </summary>
+        /// <param name="wordDataList">包含词汇内容、类别和难度的列表</param>
+        /// <returns>创建的词汇列表</returns>
+        public List<Word> CreateMultipleWords(List<(string content, string category, string difficulty)> wordDataList)
+        {
+            var words = new List<Word>();
+            foreach (var (content, category, difficulty) in wordDataList)
+            {
+                var word = new Word
+                {
+                    Content = content,
+                    Category = category,
+                };
+                words.Add(word);
+            }
+            return words;
+        }
+        // 假设这是在某个服务或控制器中的方法
+
     }
 }
