@@ -20,23 +20,72 @@ namespace backend.Services
         }
 
         // 用户注册
-        public async Task<User> RegisterAsync(User user)
+        public async Task<User> RegisterAsync(string username, string email, string plainPassword)
         {
-            // 检查用户名是否已存在
-            if (await _context.Users.AnyAsync(u => u.Username == user.Username))
+            string passwordHash = HashPassword(plainPassword);
+            var newUser = new User
             {
-                throw new ArgumentException("用户名已存在");
-            }
+                Username = username,
+                Email = email,
+                PasswordHash = passwordHash,
+                CreatedAt = DateTime.UtcNow,
+                Status = UserStatus.Active, // 默认状态为激活
+                Role = "User", // 默认角色为普通用户
+                AvatarUrl = "", // 默认头像链接为空
+                totalScore = 0, // 默认总分数为0
+                userRole = "User", // 默认角色为普通用户
+                isOnline = false // 默认在线状态为false
+            };
 
-            // 密码加密
-            user.PasswordHash = HashPassword(user.PasswordHash);
-
-            _context.Users.Add(user);
+            _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
-            return user;
+            return newUser;
+            // // 检查用户名是否已存在
+            // if (await _context.Users.AnyAsync(u => u.Username == user.Username))
+            // {
+            //     throw new ArgumentException("用户名已存在");
+            // }
+
+            // // 密码加密
+            // user.PasswordHash = HashPassword(user.PasswordHash);
+
+            // _context.Users.Add(user);
+            // await _context.SaveChangesAsync();
+            // return user;
         }
 
          // 密码加密方法
+        // HashPassword method is defined below, so this duplicate is removed.
+
+        // 用户登录
+                // 用户登录
+        // 修改方法签名，接收明文密码
+       public async Task<User> LoginAsync(string username, string email, string password)
+        {
+            User user = null;
+            if (!string.IsNullOrEmpty(username))
+            {
+                user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            }
+            else if (!string.IsNullOrEmpty(email))
+            {
+                user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            }
+
+            if (user != null && VerifyPassword(password, user.PasswordHash))
+            {
+                return user;
+            }
+
+            return null;
+        }
+
+        private bool VerifyPassword(string password, string passwordHash)
+        {
+            string hashedPassword = HashPassword(password);
+            return hashedPassword == passwordHash;
+        }
+
         private string HashPassword(string password)
         {
             using (SHA256 sha256Hash = SHA256.Create())
@@ -50,13 +99,6 @@ namespace backend.Services
                 }
                 return builder.ToString();
             }
-        }
-
-        // 用户登录
-        public async Task<User> LoginAsync(string username, string passwordHash)
-        {
-            var hashedPassword = HashPassword(passwordHash);
-            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username && u.PasswordHash == hashedPassword);
         }
 
         // 更新用户资料

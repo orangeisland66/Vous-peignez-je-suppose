@@ -30,7 +30,7 @@ namespace backend.Repositories
         // 根据类别和难度获取词汇列表
         public IEnumerable<Word> GetWordsByCategoryAndDifficulty(string category, string difficulty)
         {
-            return _context.Words.Where(w => w.Category == category && w.Difficulty == difficulty).ToList();
+            return _context.Words.Where(w => w.Category == category).ToList();
         }
 
         // 添加新词汇

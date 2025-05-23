@@ -56,6 +56,7 @@
 </template>
 
 <script>
+import apiService from '@/services/apiService';
 export default {
   data() {
     return {
@@ -94,18 +95,35 @@ export default {
       if (this.$route.path !== '/register') this.$router.push('/register');
     },
     async handleLogin() {
-      // 模拟登录逻辑：无论输入什么，都跳转
-      const fakeUser = {
-        id: 1,
-        username: 'guest',
-        token: 'fake-token'
+        console.log('handleLogin method called.');
+
+        this.validateUsername();
+        this.validatePassword();
+        if (this.usernameError || this.passwordError) {
+          return;
+        }
+        const isEmail = this.username.includes('@');
+        const credentials = {
+        Password: this.password,
+        [isEmail ? 'Email' : 'Username']: this.username
       };
-
-      // 你可以在此处设置 store 或 localStorage
-      localStorage.setItem('token', 'dummy-token');
-
-      // 然后跳转
-      this.$router.push('/lobby');
+        try { 
+          const response = await apiService.login(credentials); 
+          if (response) {
+             const { token, userInfo } = response.data;
+          localStorage.setItem('token', token);
+          localStorage.setItem('userInfo', JSON.stringify(userInfo));
+          this.$router.push('/lobby');
+        } else {
+          this.error = '登录失败，请稍后重试1';
+        }
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          this.error = '用户名或密码错误';
+        } else {
+          this.error = '登录失败，请稍后重试2';
+        }
+      }
     }
   }
 };
