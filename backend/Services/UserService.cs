@@ -40,25 +40,10 @@ namespace backend.Services
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
             return newUser;
-            // // 检查用户名是否已存在
-            // if (await _context.Users.AnyAsync(u => u.Username == user.Username))
-            // {
-            //     throw new ArgumentException("用户名已存在");
-            // }
-
-            // // 密码加密
-            // user.PasswordHash = HashPassword(user.PasswordHash);
-
-            // _context.Users.Add(user);
-            // await _context.SaveChangesAsync();
-            // return user;
         }
 
-         // 密码加密方法
-        // HashPassword method is defined below, so this duplicate is removed.
 
         // 用户登录
-                // 用户登录
         // 修改方法签名，接收明文密码
        public async Task<User> LoginAsync(string username, string email, string password)
         {
