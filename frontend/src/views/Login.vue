@@ -34,21 +34,6 @@
           <button type="submit" class="submit-btn">登录</button>
         </form>
 
-        <div class="social-login">
-          <p class="social-title">第三方登录</p>
-          <div class="social-buttons">
-            <button class="social-btn wechat">
-              <span class="social-icon">微信</span>
-            </button>
-            <button class="social-btn qq">
-              <span class="social-icon">QQ</span>
-            </button>
-            <button class="social-btn weibo">
-              <span class="social-icon">微博</span>
-            </button>
-          </div>
-        </div>
-
         <div v-if="error" class="error-message login-error">{{ error }}</div>
       </div>
     </div>
