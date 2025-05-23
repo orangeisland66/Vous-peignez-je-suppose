@@ -214,7 +214,7 @@ export default {
 .form-input {
   padding: 12px 16px;
   border: 1px solid var(--gray-light);
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 16px;
   transition: all 0.2s ease;
 }

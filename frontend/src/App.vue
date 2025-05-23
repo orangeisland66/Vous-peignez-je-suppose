@@ -36,7 +36,7 @@ export default {
   },
   methods: {
     handleMouseMove(e) {
-      this.showNavbar = e.clientY < 60;
+      this.showNavbar = e.clientY < 72;
     }
   }
 };
@@ -103,7 +103,7 @@ html,
   top: -80px;
   left: 0;
   width: 100%;
-  height: 48px;
+  height: 50px;
   padding: 4px;
   background-color: var(--navbar-bg);
   backdrop-filter: var(--navbar-blur);
