@@ -16,14 +16,19 @@ namespace backend.Models
         [StringLength(100)]
         public string Username { get; set; }
 
-        public string Password { get; set; }
+        // **新增：关联到 User 实体的外键**
+        public int UserId { get; set; }
+
+        // **新增：导航属性到 User 实体**
+        [ForeignKey("UserId")]
+        public virtual User User { get; set; }
 
         // 玩家所属的游戏房间Id
         public int GameRoomId { get; set; }
 
         // 玩家所属的房间
         [ForeignKey("GameRoomId")]
-        // public GameRoom GameRoom { get; set; }
+        public GameRoom GameRoom { get; set; }
 
         // 玩家当前的分数
         public int Score { get; set; }
@@ -33,9 +38,6 @@ namespace backend.Models
 
         // 玩家是否为房主
         public bool IsHost { get; set; }
-
-        // 玩家是否已经猜对
-        public bool HasGuessedCorrectly { get; set; }
 
         // 玩家是否已作画
         public bool HasDrawn { get; set; }
@@ -56,9 +58,10 @@ namespace backend.Models
         {
             Score = 0;
             Status = PlayerStatus.Waiting;  // 默认状态为待机
-            HasGuessedCorrectly = false;
+            HasGuessed = false;
             HasDrawn = false;
             JoinedAt = DateTime.UtcNow;
+            IsHost = false; // 默认不是房主
         }
     }
 

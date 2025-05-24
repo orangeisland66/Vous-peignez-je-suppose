@@ -15,7 +15,7 @@ namespace backend.Models
 
         // **添加 RoomId 属性以匹配前端发送的数据**
         // 考虑是否需要唯一索引或后端生成此ID
-        public string? RoomId { get; set; } // 使用可空字符串匹配前端发送的类型
+        public string? RoomId { get; set; } // 八位随机字符串，由前端创建房间时产生
 
         [Required(ErrorMessage = "房间名称不能为空")] // 添加Required验证
         public string Name { get; set; } // 将Name改为非可空，并添加Required验证
@@ -44,6 +44,11 @@ namespace backend.Models
         [MinLength(1, ErrorMessage = "请至少选择一个词库分类")] // 至少选择一个分类
         public List<string> Categories { get; set; }
 
+            // **新增：创建者用户ID**
+        public int CreatorId { get; set; }
+        // **新增：导航属性到创建者用户 **
+        // [ForeignKey("CreatorId")] // 如果 User 模型的主键不是 Id，或者想明确指定外键
+        public virtual User? Creator { get; set; } // 创建者
 
         public List<Player> Players { get; set; } // 这个属性通常在创建时为空列表
         public List<ChatMessage> ChatHistory { get; set; } // 这个属性通常在创建时为空列表
@@ -62,6 +67,7 @@ namespace backend.Models
             Rounds = 6; // 默认回合数
             Categories = new List<string>(); // 默认空分类列表
             GameConfig = new GameConfig(); // 默认游戏配置
+            //CreatorId在创建时被赋值
         }
     }
 

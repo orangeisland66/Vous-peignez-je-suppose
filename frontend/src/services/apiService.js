@@ -109,7 +109,18 @@ const apiService = {
           throw new Error(`创建房间失败：${error.message}`);
       }
     }
-  }
+  },
+
+    async getRoomDetails(roomIdString) { // roomIdString 是从 URL 获取的8位字符串房间号
+    try {
+      // 调用新的 API 端点
+      const response = await axios.get(`${API_BASE_URL}/rooms/details/by-string-id/${roomIdString}`);
+      return response.data; // 期望后端返回 { success: true, room: { ... } }
+    } catch (error) {
+      console.error(`获取房间 ${roomIdString} 详情失败:`, error);
+      throw error; // 让调用方处理
+    }
+  },
 };
 
 export default apiService;

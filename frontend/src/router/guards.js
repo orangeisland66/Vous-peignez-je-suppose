@@ -5,6 +5,12 @@ export function checkUserAuth(to, from, next) {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isLoggedIn = !!localStorage.getItem('token')
 
+    // 调试日志，非常重要！
+  console.log(`[AuthGuard] Navigating to: ${to.path}`);
+  console.log(`[AuthGuard] Route meta:`, to.meta);
+  console.log(`[AuthGuard] requiresAuth: ${requiresAuth}`);
+  console.log(`[AuthGuard] isLoggedIn: ${isLoggedIn}`);
+
   if (requiresAuth && !isLoggedIn) {
     return next({ name: 'Login' })
   }
