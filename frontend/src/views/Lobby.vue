@@ -80,16 +80,44 @@ export default {
   data() {
     return {
       rooms: [],
-      user: null
+      user: null,
+      currentUserId: null//用于储存从Local Storage中获取当前用户的ID
     }
   },
-  async created() {
-    await this.fetchUserInfo()
-    await this.fetchRooms()
-  },
+async created() {
+    console.log('Lobby created hook called.');
+
+    // **1. 主要依赖从 Local Storage 读取 'userId'**
+    const userIdString = localStorage.getItem('userId');
+    console.log('Lobby.vue - userIdString from local storage:', userIdString);
+
+    if (userIdString) {
+      this.currentUserId = parseInt(userIdString); // 确保是整数类型
+      console.log('Lobby.vue - Parsed currentUserId:', this.currentUserId);
+
+      if (isNaN(this.currentUserId)) {
+          console.error('Lobby.vue - Parsed userId is NaN. Redirecting to login.');
+          this.$toast?.error('用户ID无效，请重新登录');
+          localStorage.removeItem('userId'); // 清除无效的 userId
+          this.$router.push('/login');
+          return;
+      }
+
+      // **2. 调用 fetchUserInfo 方法，并传递获取到的 currentUserId**
+      await this.fetchUserInfo(this.currentUserId);
+      await this.fetchRooms(); // 获取房间列表
+
+    } else {
+      // 如果 Local Storage 中没有 userId，说明用户未登录或登录信息已清除
+      console.error('Lobby.vue - userId not found in local storage. Redirecting to login.');
+      this.$toast?.error('未检测到登录用户，请重新登录');
+      this.$router.push('/login');
+    }
+},
   methods: {
     async fetchRooms() {
       try {
+        console.log('Fetching rooms list...');//输出日志信息
         const res = await fetch('/api/rooms/list')
         if (!res.ok) throw new Error('获取房间列表失败')
         this.rooms = await res.json()
@@ -98,14 +126,27 @@ export default {
         this.$toast?.error('获取房间列表失败')
       }
     },
-    async fetchUserInfo() {
+    async fetchUserInfo(userId) { // **<-- 接收 userId 参数**
       try {
-        const res = await fetch('/api/user/profile')
-        if (!res.ok) throw new Error('获取用户信息失败')
-        this.user = await res.json()
+        console.log('Fetching user info for userId:', userId);
+        // **修改 fetch 调用，在 URL 中添加 userId 查询参数**
+        // 根据你的 UserController.cs，GetUserProfile 期望 userId 查询参数
+        const res = await fetch(`/api/users/profile?userId=${userId}`); // **<-- 添加查询参数**
+        console.log('Fetching user info from URL:', `/api/users/profile?userId=${userId}`);
+
+        if (!res.ok) {
+          // 如果响应状态码不是 2xx，抛出包含状态码和文本的错误
+          const errorText = await res.text(); // 尝试获取错误响应体文本
+          throw new Error(`获取用户信息失败: 状态码 ${res.status}, 响应: ${errorText}`);
+        }
+        this.user = await res.json();
+        console.log('User info fetched:', this.user); // 添加日志确认获取到用户信息
       } catch (e) {
-        console.error(e)
-        this.$toast?.error('获取用户信息失败')
+        console.error('获取用户信息失败:', e);
+        this.user = null; // 获取失败时清空用户信息
+        this.$toast?.error(e.message || '获取用户信息失败'); // 显示错误信息
+        // 如果获取用户信息失败，可能是 token 过期或无效，考虑重定向到登录页
+        // this.$router.push('/login');
       }
     },
     createRoom() {
