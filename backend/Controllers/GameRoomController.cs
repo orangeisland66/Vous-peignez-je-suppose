@@ -33,25 +33,31 @@ namespace backend.Controllers
         // 创建一个新的游戏房间
         // 完整路由: POST /rooms/create
         [HttpPost("create")]
-        public async Task<IActionResult> CreateRoom([FromBody] GameRoom newRoom)
+        public async Task<IActionResult> CreateRoom([FromBody] GameRoom newRoom) 
         {
-            // ... (代码保持不变) ...
-             if (newRoom == null || string.IsNullOrEmpty(newRoom.Name))
+            if (newRoom == null || string.IsNullOrEmpty(newRoom.Name))
             {
-                // 返回 BadRequest，并包含前端期望的 message 字段
                 return BadRequest(new { success = false, message = "房间信息不完整" });
             }
 
-            var result = await _gameRoomService.CreateRoomAsync(newRoom);
-            if (result != null)
+            // newRoom.CreatorId 应该已经被模型绑定填充了
+            // 注意：newRoom.Players 和 ChatHistory 会是 null 或空，因为前端没有发送它们
+            // GameRoom 的构造函数会初始化它们为空列表
+
+            var createdRoomInDb = await _gameRoomService.CreateRoomAsync(newRoom); // 将 newRoom 传递给服务层
+            if (createdRoomInDb != null)
             {
-                // 返回 Ok，并包含前端期望的 success 和 roomId 字段
-                return Ok(new { success = true, roomId = result.Id, message = "房间创建成功" }); // 添加 success 字段
+                return Ok(new
+                {
+                    success = true,
+                    dbId = createdRoomInDb.Id, // 数据库的 int Id
+                    roomId = createdRoomInDb.RoomId, // 前端生成的8位字符串 RoomId
+                    message = "房间创建成功"
+                });
             }
             else
             {
-                 // 返回 BadRequest，并包含前端期望的 success 和 message 字段
-                return BadRequest(new { success = false, message = "房间创建失败" }); // 添加 success 字段
+                return BadRequest(new { success = false, message = "房间创建失败" });
             }
         }
 
@@ -90,6 +96,21 @@ namespace backend.Controllers
                 return NotFound(new { success = false, message = "房间不存在" }); // 添加 success 字段
             }
             return Ok(new { success = true, room = room }); // 添加 success 字段，并返回房间对象
+        }
+
+        // 新增的通过字符串 RoomId 获取房间详情的 API 端点
+        // 完整路由: GET /api/rooms/details/by-string-id/{roomIdString}
+        [HttpGet("details/by-string-id/{roomIdString}")]
+        public async Task<IActionResult> GetRoomDetailsByStringId(string roomIdString)
+        {
+            // 调用新添加的服务层方法
+            var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomIdString);
+            if (room == null)
+            {
+                return NotFound(new { success = false, message = "房间不存在 (ID: " + roomIdString + ")" });
+            }
+            // 确保 JSON 序列化配置了 ReferenceHandler.IgnoreCycles
+            return Ok(new { success = true, room = room });
         }
 
          // 开始游戏

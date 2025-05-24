@@ -67,7 +67,7 @@ namespace backend.Controllers
             {
                 // 这里应该生成JWT token
                 //var token = GenerateJwtToken(user);
-                return Ok(new { Message = "登录成功", UserId = user.Id });
+                return Ok(new { Message = "登录成功", userId = user.Id, userName=user.Username });
             }
             else
             {

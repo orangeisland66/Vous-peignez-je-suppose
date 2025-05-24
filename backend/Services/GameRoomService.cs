@@ -23,11 +23,55 @@ namespace backend.Services
         /// </summary>
         /// <param name="gameRoom">要创建的游戏房间对象</param>
         /// <returns>创建成功的游戏房间对象</returns>
-        public async Task<GameRoom> CreateRoomAsync(GameRoom gameRoom)
+        public async Task<GameRoom> CreateRoomAsync(GameRoom roomDataFromController)
         {
-            _context.GameRooms.Add(gameRoom);
+            // **1. 查找创建者用户**
+            // 假设你的 User 模型可以通过 Id 查找，并且 Player 模型需要 User 信息
+            var creator = await _context.Users.FindAsync(roomDataFromController.CreatorId);
+
+            if (creator == null)
+            {
+                // 选择抛出异常，让 Controller 捕获并返回 BadRequest
+                throw new ArgumentException("创建者用户不存在。");
+            }
+
+            // **2. 创建并填充 GameRoom 实体**
+            // roomDataFromController 已经包含了大部分前端设置的属性
+            // GameRoom 的构造函数会初始化 Players 和 ChatHistory 为空列表
+            // 以及设置一些默认值，这些默认值会被 roomDataFromController 中的值覆盖（如果存在）
+
+            // 确保 RoomId 被正确设置 (前端已生成并发送)
+            // newRoom.RoomId = roomDataFromController.RoomId; (如果模型绑定没问题，这里应该是对的)
+
+            // 关联创建者 (如果你的 GameRoom 模型有 Creator 导航属性)
+            roomDataFromController.Creator = creator; // 如果 CreatorId 已正确绑定，这可能不需要显式设置，取决于你的EF配置
+
+            // **3. 将创建者添加为第一个玩家 (房主)**
+            // 假设你的 Player 模型如下：
+            // public class Player { public int Id {get;set;} public int UserId {get;set;} public virtual User User {get;set;} public string Username {get;set;} public bool IsHost {get;set;} /* ...其他属性... */ }
+            var hostPlayer = new Player
+            {
+                // Player.Id 是数据库自动生成的，这里不应该用 creator.Id 赋值给 Player.Id
+                // Player.Id 将在 SaveChangesAsync() 后由数据库生成并填充
+
+                UserId = creator.Id,          // **设置关联的 User 的 ID**
+                User = creator,               // **设置导航属性到 User 对象**
+                Username = creator.Username,  // **从 User 对象获取用户名作为 Player 的初始用户名**
+                IsHost = true,                // 标记为房主
+                GameRoom = roomDataFromController, // **关联到当前创建的 GameRoom 对象**
+                                                // GameRoomId 会在 EF Core 保存时根据 GameRoom 导航属性自动设置
+                // 其他 Player 属性会使用 Player 构造函数中的默认值 (Score=0, Status=Waiting, etc.)
+            };
+            // GameRoom 的构造函数应该已经初始化了 Players = new List<Player>();
+            roomDataFromController.Players.Add(hostPlayer);
+
+            // **4. 保存到数据库**
+            _context.GameRooms.Add(roomDataFromController);
+            // 当你保存 GameRoom 时，如果 Player 与 GameRoom 有正确的导航属性和外键关系，
+            // EF Core 会自动将 hostPlayer 也保存到 Players 表并建立关联。
             await _context.SaveChangesAsync();
-            return gameRoom;
+
+            return roomDataFromController; // 返回创建并保存到数据库的房间对象 (现在它有DB生成的Id)
         }
 
         /// <summary>
@@ -51,22 +95,29 @@ namespace backend.Services
         {
             return await _context.GameRooms
                 .Include(gr => gr.Players)
-                .Include(gr => gr.ChatHistory)
+                .Include(gr => gr.Creator)      // 加载房间的创建者 (User)
+                .Include(gr => gr.Players)      // 加载房间内的所有玩家
+                    .ThenInclude(p => p.User)   // 对于每个玩家，加载其关联的 User 信息
+                // .Include(gr => gr.ChatHistory) // 如果等待界面不需要聊天记录，可以暂时不加载以提高性能
                 .FirstOrDefaultAsync(gr => gr.Id == roomId);
         }
 
-        // /// <summary>
-        // /// 新增根据房间 ID 获取游戏房间的方法（GetRoomByIdAsync）
-        // /// </summary>
-        // /// <param name="roomId">游戏房间的 ID</param>
-        // /// <returns>对应的游戏房间对象，如果不存在则返回 null</returns>
-        // public async Task<GameRoom?> GetRoomByIdAsync(int roomId)
-        // {
-        //     return await _context.GameRooms
-        //         .Include(gr => gr.Players)
-        //         .Include(gr => gr.ChatHistory)
-        //         .FirstOrDefaultAsync(gr => gr.Id == roomId);
-        // }
+        /// <summary>
+        /// 根据自定义的字符串 RoomId (例如8位房间号) 获取房间详细信息。
+        /// 会加载 Creator, Players (及其关联的 User)。
+        /// </summary>
+        /// <param name="roomIdString">房间的自定义字符串 ID。</param>
+        /// <returns>找到的 GameRoom 对象，如果不存在则返回 null。</returns>
+        public async Task<GameRoom?> GetRoomDetailsByRoomIdStringAsync(string roomIdString)
+        {
+            return await _context.GameRooms
+                .Include(gr => gr.Creator)      // 加载房间的创建者 (User)
+                .Include(gr => gr.Players)      // 加载房间内的所有玩家
+                    .ThenInclude(p => p.User)   // 对于每个玩家，加载其关联的 User 信息
+                // .Include(gr => gr.ChatHistory) // 根据需要加载
+                .FirstOrDefaultAsync(gr => gr.RoomId == roomIdString); // 条件是自定义的 RoomId 字符串
+        }
+
 
         /// <summary>
         /// 用户加入游戏房间
@@ -82,7 +133,7 @@ namespace backend.Services
                 return false;
             }
 
-            if (gameRoom.IsPrivate && gameRoom.RoomPassword != player.Password)
+            if (gameRoom.IsPrivate)
             {
                 return false;
             }

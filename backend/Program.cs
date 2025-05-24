@@ -60,7 +60,12 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<WordManager>();
 
 // 添加控制器
-builder.Services.AddControllers();
+builder.Services.AddControllers() // 或者 AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        // 通常，对于 API 返回，忽略循环更简单直接。
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

@@ -98,11 +98,13 @@ export default {
           console.log('Login.vue - API Response Data:', response.data); // 打印后端返回的数据部分
           //检查响应中是否包含userId
           if (response && response.data && response.data.userId !== undefined) {
+          const userName = response.data.username ; // 获取用户名
           const userId = response.data.userId; // 获取 userId
           console.log('Login.vue - Extracted userId:', userId);//日志输出
           // 将 userId 存储到 Local Storage**
           // 这是 Lobby.vue 主要需要的信息
           localStorage.setItem('userId', userId.toString()); // 确保存储为字符串
+          localStorage.setItem('userName', userName); // 存储用户名
           localStorage.removeItem('userInfo');
           // localStorage.setItem('token', token);
           // localStorage.setItem('userInfo', JSON.stringify(userInfo));

@@ -9,24 +9,28 @@
         </div>
         <div class="room-badge">
           <span class="room-label">房间号</span>
-          <span class="room-id">#{{ room?.id || '-' }}</span>
+          <!-- 显示从后端获取的字符串 roomId -->
+          <span class="room-id">#{{ room?.roomId || '-' }}</span>
         </div>
       </header>
 
       <!-- Main Content Area -->
-      <div class="main-content">
+      <!-- 使用 v-if 控制，在加载完成且没有错误时显示 -->
+      <div class="main-content" v-if="!isLoading && room && !errorMessage">
         <!-- Left Panel - Host & Actions -->
         <aside class="host-panel">
           <div class="host-info">
-            <div class="avatar">{{ room?.host?.username?.charAt(0) || '?' }}</div>
+            <!-- 显示房主信息 -->
+            <div class="avatar">{{ hostPlayer?.userName?.charAt(0)?.toUpperCase() || '?' }}</div>
             <div class="host-details">
               <div class="host-label">房主</div>
-              <div class="host-name">{{ room?.host?.username || '-' }}</div>
+              <div class="host-name">{{ hostPlayer?.username || '加载中...' }}</div>
             </div>
           </div>
           
           <div class="action-cards">
-            <button v-if="isHost" @click="startGame" class="action-card start">
+            <!-- 判断当前用户是否为房主 -->
+            <button v-if="isCurrentUserHost" @click="startGame" class="action-card start">         
               <div class="action-icon">▶</div>
               <span class="action-text">开始游戏</span>
             </button>
@@ -51,69 +55,198 @@
         <section class="players-panel">
           <div class="panel-header">
             <h2>玩家列表</h2>
-            <span class="player-count">{{ players.length }} 名玩家</span>
+           <!-- 显示真实玩家数量 -->
+            <span class="player-count">{{ actualPlayers.length }} 名玩家</span> 
           </div>
           
           <div class="player-list-container">
-            <div v-if="players.length === 0" class="no-players">
+            <div v-if="actualPlayers.length === 0 && !isLoading" class="no-players">
               <div class="empty-icon">👤</div>
-              <p>暂无玩家</p>
+              <p>暂无玩家，等待加入...</p> <!-- 或者你之前的 "暂无玩家" -->
             </div>
+
             
             <ul v-else class="player-list">
-              <li v-for="(p, i) in players" :key="p.id" class="player-card">
-                <div class="player-avatar">{{ p.username.charAt(0) }}</div>
+              <!-- 遍历从后端获取的 players -->
+              <li v-for="(player, index) in actualPlayers" :key="player.id" class="player-card">
+                <!-- 假设 Player 对象有 user.username -->
+                <div class="player-avatar">{{ player.user?.userName?.charAt(0)?.toUpperCase() || 'P' }}</div>
                 <div class="player-details">
-                  <div class="player-name">{{ p.username }}</div>
-                  <div class="player-id">玩家 #{{ i + 1 }}</div>
+                  <div class="player-name">{{ player.user?.username || '玩家加载中' }}</div>
+                  <div class="player-id">玩家 #{{ index + 1 }}</div>
                 </div>
-                <div v-if="p.id === room.host.id" class="host-badge">房主</div>
+                <!-- 判断是否为房主 -->
+                <div v-if="player.isHost" class="host-badge">房主</div>
               </li>
-              
-              <!-- 移除了最小玩家人数提示 -->
             </ul>
           </div>
         </section>
+      </div>
+      <!-- 加载状态 -->
+      <div v-if="isLoading" class="loading-indicator">
+        <p>正在加载房间信息...</p>
+      </div>
+      <!-- 错误信息 -->
+      <div v-if="!isLoading && errorMessage" class="error-message">
+        <p>{{ errorMessage }}</p>
+        <button @click="leaveRoom">返回大厅</button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import apiService from '@/services/apiService'
+
 export default {
   name: 'WaitingRoom',
   data() {
     return {
-      room: { id: 1, host: { id: 1, username: 'Alice' } },
-      players: [
-        { id: 1, username: 'Alice' },
-        { id: 2, username: 'Bob' },
-        { id: 3, username: 'Charlie' },
-        { id: 4, username: 'David' },
-        { id: 5, username: 'Eve' }
-      ],
-      user: { id: 1, username: 'Alice' },
-      minPlayers: 4
-    }
+      room: null,        // 存储从后端获取的整个房间对象
+      currentUser: null, // 存储当前登录用户的信息
+      isLoading: true,   // 加载状态标志
+      errorMessage: '',  // 错误信息
+      // minPlayers: 4,  // 如果需要，可以从 room.gameConfig 或类似地方获取
+    };
   },
   computed: {
-    isHost() {
-      return this.room.host.id === this.user.id
-    }
-  },
-  mounted() {
-    // 为了测试，直接使用静态数据而不是从API获取
-    console.log('WaitingRoom mounted, using mock data for testing')
-  },
-  methods: {
-    startGame() {
-      // 直接跳转到游戏页面，不进行人数检查
-      console.log('直接跳转到游戏页面')
-      this.$router.push(`/room/${this.room.id}/game`)
+    // 从路由参数获取房间的字符串ID
+    roomIdFromRoute() {
+      return this.$route.params.roomId;
     },
-    leaveRoom() {
-      console.log('返回大厅')
-      this.$router.push('/lobby')
+    // 从 room.players 中找到房主玩家对象 (Player 对象)
+    hostPlayerRecord() {
+      if (this.room && this.room.players) {
+        return this.room.players.find(p => p.isHost === true);
+      }
+      return null;
+    },
+    // 获取房主的 User 对象 (用于显示用户名等)
+    hostPlayer() {
+      return this.hostPlayerRecord?.user || null;
+    },
+    // 判断当前登录用户是否为房主
+    isCurrentUserHost() {
+      if (this.currentUser && this.hostPlayer) {
+        return this.currentUser.id === this.hostPlayer.id; // 比较 User ID
+      }
+      return false;
+    },
+    // 实际的玩家列表 (Player 对象列表)
+    actualPlayers() {
+      return this.room?.players || [];
+    },
+    // isHost() {
+    //   return this.room.host.id === this.user.id
+    // }
+  },
+    async created() {
+      console.log('[WaitingRoom] Created hook started.');
+      // 1. 获取当前登录用户信息
+      const userIdString = localStorage.getItem('userId');
+      const userName = localStorage.getItem('userName');
+      console.log(`[WaitingRoom] localStorage - userId: ${userIdString}, userName: ${userName}`);
+      if (userIdString && userName) {
+        this.currentUser = {
+          id: parseInt(userIdString),
+          userName: userName,
+        };
+      } else {
+        this.errorMessage = "用户未登录，请先登录。";
+        this.isLoading = false;
+        this.$router.push('/login'); // 跳转到登录页
+        return;
+      }
+
+      // 2. 检查路由中是否有 roomId
+      if (!this.roomIdFromRoute) {
+        this.errorMessage = "未找到房间ID，无法加载房间信息。";
+        this.isLoading = false;
+        // 可以考虑跳转回大厅或显示更友好的错误页
+        this.$router.push('/lobby');
+        return;
+      }
+
+      // 3. 调用 API 获取房间详情
+      await this.fetchRoomDetails();
+    },
+  
+  // mounted() {
+  //   // 为了测试，直接使用静态数据而不是从API获取
+  //   console.log('WaitingRoom mounted, using mock data for testing')
+  // },
+  methods: {
+    async fetchRoomDetails() {
+      this.isLoading = true;
+      this.errorMessage = ''; // 重置错误信息
+      try {
+        console.log(`WaitingRoom: 正在获取房间 ${this.roomIdFromRoute} 的详细信息...`);
+        const response = await apiService.getRoomDetails(this.roomIdFromRoute);
+        if (response && response.success && response.room) {
+          this.room = response.room;
+          console.log('WaitingRoom: 成功获取房间数据:', this.room);
+          // 验证数据结构 (可选，用于调试)
+          if (!this.room.roomId) console.warn("后端返回的 room 对象缺少 roomId 字符串");
+          if (!this.room.players) console.warn("后端返回的 room 对象缺少 players 列表");
+          else {
+            this.room.players.forEach(p => {
+              if (p.user === undefined) console.warn(`玩家 ID ${p.id} (后端Player.Id) 缺少 user 对象`);
+              if (p.isHost === undefined) console.warn(`玩家 ID ${p.id} 缺少 isHost 标志`);
+            });
+          }
+          if (!this.hostPlayer) {
+             console.warn("无法从房间数据中确定房主信息。请检查后端是否正确设置了 Player.isHost 和 Player.user。");
+             // 检查 this.room.creator 是否可用作为备选
+             if (this.room.creator) {
+                 console.log("尝试使用 room.creator 作为房主信息:", this.room.creator);
+                 // 如果 hostPlayer 逻辑依赖于 players 列表中的 isHost，
+                 // 而 creator 是直接挂在 room 上的，需要调整 hostPlayer 计算属性
+             }
+          }
+
+        } else {
+          this.errorMessage = response?.message || '无法加载房间信息，房间可能不存在或已关闭。';
+          this.room = null; // 清空房间数据
+          console.error('WaitingRoom: 获取房间信息失败:', response?.message);
+        }
+      } catch (error) {
+        console.error('WaitingRoom: 获取房间详情时发生网络或API错误:', error);
+        if (error.response && error.response.status === 404) {
+            this.errorMessage = '房间不存在或已被关闭。';
+        } else {
+            this.errorMessage = '加载房间信息失败，请检查网络连接或稍后重试。';
+        }
+        this.room = null; // 清空房间数据
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    startGame() {
+      if (!this.isCurrentUserHost) {
+        alert("只有房主才能开始游戏。");
+        return;
+      }
+      // 可以在这里添加其他开始游戏的逻辑，例如检查玩家人数
+      // if (this.actualPlayers.length < this.minPlayers) {
+      //   alert(`至少需要 ${this.minPlayers} 名玩家才能开始游戏。`);
+      //   return;
+      // }
+      console.log(`WaitingRoom: 开始游戏，房间ID (字符串): ${this.room.roomId}`);
+      // TODO: 调用后端API通知游戏开始
+      // await apiService.startGame(this.room.roomId);
+      this.$router.push(`/room/${this.room.roomId}/game`); // 使用字符串 roomId 进行路由
+    },
+    async leaveRoom() {
+      console.log('WaitingRoom: 离开房间，返回大厅');
+      try {
+        // TODO: 调用后端API通知服务器用户离开房间
+        // 例如: await apiService.leaveRoom(this.room.roomId, this.currentUser.id);
+        // 清理本地状态或让后端处理
+      } catch (error) {
+        console.error("离开房间时出错:", error);
+        // 即使API调用失败，也允许用户返回大厅
+      }
+      this.$router.push('/lobby');
     }
   }
 }

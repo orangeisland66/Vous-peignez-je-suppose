@@ -234,7 +234,20 @@ export default {
       }
 
       try {
-// **1. 生成房间号**
+                // **0. 获取当前登录用户的 ID**
+        const userIdString = localStorage.getItem('userId');
+        if (!userIdString) {
+            this.$toast?.error('用户未登录，无法创建房间') || alert('用户未登录，无法创建房间');
+            this.$router.push('/login');
+            return;
+        }
+        const creatorId = parseInt(userIdString);
+        if (isNaN(creatorId)) {
+            this.$toast?.error('用户信息错误，无法创建房间') || alert('用户信息错误，无法创建房间');
+            this.$router.push('/login');
+            return;
+        }
+        // **1. 生成房间号**
         const newRoomId = this.generateRoomId(8); // 调用生成函数
 
         // **2. 准备发送给后端的数据**
@@ -247,9 +260,9 @@ export default {
           rounds: this.room.rounds,
           isPrivate: this.room.privacy === 'private', // 将隐私设置转为布尔值
           password: this.room.privacy === 'private' ? this.room.password : null, // 私密房间才发送密码
-          categories: this.room.categories // 发送选择的分类数组
+          categories: this.room.categories, // 发送选择的分类数组
+          creatorId: creatorId // 添加创建者ID
           // TODO: 如果后端需要其他信息（如创建者ID），在这里添加
-          // creatorId: this.$store.getters['user/userInfo'].id // 示例：从Vuex获取用户ID
         };
 
         console.log('Sending room data to API:', roomDataToSend);
@@ -266,7 +279,7 @@ export default {
 
            // **5. 导航到新创建的房间页面**
            // 使用获取到的房间ID进行跳转
-           this.$router.push(`/room/${createdRoomId}/waiting`);
+        this.$router.push(`/room/${res.roomId}/waiting`);
 
         } else {
            // 处理后端返回的创建失败信息 (如果后端提供了)
