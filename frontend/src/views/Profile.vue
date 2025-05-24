@@ -11,6 +11,7 @@
           <div class="avatar">{{ user.username?.charAt(0) || '?' }}</div>
           <span class="username">{{ user.username || '未登录' }}</span>
         </div>
+        <button @click="logout" class="logout-btn">退出登录</button>
       </header>
 
       <!-- Main Content Area -->
@@ -115,7 +116,11 @@
   </div>
 </template>
 
+
 <script>
+import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
+import apiService from '@/services/apiService';
 export default {
   name: 'Profile',
   data() {
@@ -128,9 +133,10 @@ export default {
   async created() {
     await Promise.all([this.fetchUser(), this.fetchStats(), this.fetchRecent()])
   },
+
   methods: {
     async fetchUser() {
-      try {
+    try {
         const res = await fetch('/api/user/profile')
         if (!res.ok) throw new Error()
         this.user = await res.json()
@@ -161,6 +167,11 @@ export default {
     },
     formatDate(date) {
       return new Date(date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    },
+    logout() {
+      const router = useRouter();
+      // 使用 this.$store 调用 dispatch 方法
+      this.$store.dispatch('user/logout', router);
     }
   }
 }
@@ -197,6 +208,7 @@ export default {
   padding: 20px 0;
   overflow: hidden;
 }
+
 
 .profile-container {
   width: 90%;
@@ -423,6 +435,19 @@ export default {
 .stat-label {
   font-size: 0.9rem;
   color: var(--gray);
+}
+
+.logout-btn {
+  background-color: #EF4444;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background-color: #DC2626;
 }
 
 /* History Styles */
