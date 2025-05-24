@@ -11,7 +11,6 @@
           <div class="avatar">{{ user.username?.charAt(0) || '?' }}</div>
           <span class="username">{{ user.username || '未登录' }}</span>
         </div>
-        <button @click="logout" class="logout-btn">退出登录</button>
       </header>
 
       <!-- Main Content Area -->
@@ -42,26 +41,38 @@
           <div class="section-header">
             <h2>游戏统计</h2>
           </div>
-          <div class="section-content stats-grid">
+           <div class="section-content stats-grid">
             <div class="stat-card">
               <div class="stat-icon">🎮</div>
-              <div class="stat-value">{{ stats.totalGames }}</div>
-              <div class="stat-label">总游戏数</div>
+              <!-- 修改为横向布局 -->
+              <div class="stat-info">
+                <span class="stat-label">总游戏数：</span>
+                <span class="stat-value">{{ stats.totalGames }}</span>
+              </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon">🏆</div>
-              <div class="stat-value">{{ stats.wins }}</div>
-              <div class="stat-label">胜利次数</div>
+              <!-- 修改为横向布局 -->
+              <div class="stat-info">
+                <span class="stat-label">胜利次数：</span>
+                <span class="stat-value">{{ stats.wins }}</span>
+              </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon">⭐</div>
-              <div class="stat-value">{{ stats.totalScore }}</div>
-              <div class="stat-label">总得分</div>
+              <!-- 修改为横向布局 -->
+              <div class="stat-info">
+                <span class="stat-label">总得分：</span>
+                <span class="stat-value">{{ stats.totalScore }}</span>
+              </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon">📊</div>
-              <div class="stat-value">{{ stats.rank }}</div>
-              <div class="stat-label">排名</div>
+              <!-- 修改为横向布局 -->
+              <div class="stat-info">
+                <span class="stat-label">排名：</span>
+                <span class="stat-value">{{ stats.rank }}</span>
+              </div>
             </div>
           </div>
         </section>
@@ -105,11 +116,8 @@
 
       <!-- Footer Actions -->
       <footer class="profile-actions">
-        <button @click="$router.push('/lobby')" class="action-btn primary">
-          返回大厅
-        </button>
-        <button @click="$router.push('/settings')" class="action-btn secondary">
-          设置
+        <button @click="logout" class="action-btn logout">
+          退出登录
         </button>
       </footer>
     </div>
@@ -127,17 +135,23 @@ export default {
     return {
       user: { username: '', email: '', createdAt: '' },
       stats: { totalGames: 0, wins: 0, totalScore: 0, rank: 0 },
-      recentGames: []
+      recentGames: [],
+      currentUserId: null
     }
   },
   async created() {
-    await Promise.all([this.fetchUser(), this.fetchStats(), this.fetchRecent()])
+    const userIdString = localStorage.getItem('userId');
+    if (userIdString) {
+      this.currentUserId = parseInt(userIdString);
+    }
+    await Promise.all([this.fetchUser(this.currentUserId), this.fetchStats(), this.fetchRecent()])
   },
 
   methods: {
-    async fetchUser() {
+    async fetchUser(userId) {
     try {
-        const res = await fetch('/api/user/profile')
+        console.log("fetchUser");
+        const res = await fetch(`/api/users/profile?userId=${userId}`)
         if (!res.ok) throw new Error()
         this.user = await res.json()
       } catch (e) {
@@ -147,7 +161,7 @@ export default {
     },
     async fetchStats() {
       try {
-        const res = await fetch('/api/user/stats')
+        const res = await fetch('/api/users/stats')
         if (!res.ok) throw new Error()
         this.stats = await res.json()
       } catch (e) {
@@ -157,7 +171,7 @@ export default {
     },
     async fetchRecent() {
       try {
-        const res = await fetch('/api/user/games')
+        const res = await fetch('/api/users/games')
         if (!res.ok) throw new Error()
         this.recentGames = await res.json()
       } catch (e) {
@@ -291,6 +305,8 @@ export default {
   color: var(--primary-dark);
 }
 
+
+
 /* Main Content Layout */
 .main-content {
   display: flex;
@@ -333,11 +349,11 @@ export default {
 }
 
 .section-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--gray-light);
+  padding: 10px 16px;
+  border-bottom: none;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+   min-width: 150px;
 }
 
 .section-header h2 {
@@ -358,6 +374,7 @@ export default {
 
 .section-content {
   padding: 20px;
+  flex: 1;
 }
 
 /* Info Grid Styles */
@@ -365,20 +382,24 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 16px;
+  
 }
 
 .info-item {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   background: var(--primary-lightest);
   padding: 16px;
   border-radius: 12px;
+  
 }
 
 .info-label {
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   color: var(--gray);
   margin-bottom: 8px;
+  width: 80px; /* 设置标签宽度，确保对齐 */
+  /* text-align: left; */
 }
 
 .info-value {
@@ -391,14 +412,14 @@ export default {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .stat-card {
   background: white;
   border: 1px solid var(--gray-light);
   border-radius: 16px;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -414,9 +435,9 @@ export default {
 }
 
 .stat-icon {
-  font-size: 28px;
+  font-size: 2rem;
   margin-bottom: 12px;
-  height: 40px;
+  height: 16px;
   width: 40px;
   display: flex;
   align-items: center;
@@ -425,11 +446,17 @@ export default {
   background: var(--primary-lightest);
 }
 
+.stat-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .stat-value {
-  font-size: 1.75rem;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 500;
   color: var(--primary);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .stat-label {
@@ -437,18 +464,6 @@ export default {
   color: var(--gray);
 }
 
-.logout-btn {
-  background-color: #EF4444;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.logout-btn:hover {
-  background-color: #DC2626;
-}
 
 /* History Styles */
 .no-history {
@@ -568,19 +583,19 @@ export default {
   border: none;
 }
 
-.action-btn.primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  color: white;
-}
-
-.action-btn.secondary {
-  background: var(--primary-lightest);
-  color: var(--primary);
-}
-
 .action-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.logout {
+  background-color: var(--danger);
+  color: black;
+  padding: 12px 24px;
+}
+
+.logout:hover {
+  background-color: #dc3545; /* 鼠标悬停时颜色加深 */
 }
 
 /* Responsive Adjustments */
