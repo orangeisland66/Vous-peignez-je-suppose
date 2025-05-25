@@ -133,7 +133,6 @@ const apiService = {
         `${API_BASE_URL}/rooms/join/${roomId}?userId=${userId}`,
         player // 作为 body 发送
       );
-      console.error('Validation errors:', error.response.data.errors);
       // const response = await axios.post(`${API_BASE_URL}/rooms/join/${roomId}`);
       console.log('Backend response (joinRoom):', response.data);
       return response.data;

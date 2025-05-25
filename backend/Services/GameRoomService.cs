@@ -110,11 +110,12 @@ namespace backend.Services
         /// <returns>找到的 GameRoom 对象，如果不存在则返回 null。</returns>
         public async Task<GameRoom?> GetRoomDetailsByRoomIdStringAsync(string roomIdString)
         {
+      
             return await _context.GameRooms
                 .Include(gr => gr.Creator)      // 加载房间的创建者 (User)
                 .Include(gr => gr.Players)      // 加载房间内的所有玩家
                     .ThenInclude(p => p.User)   // 对于每个玩家，加载其关联的 User 信息
-                // .Include(gr => gr.ChatHistory) // 根据需要加载
+                                                // .Include(gr => gr.ChatHistory) // 根据需要加载
                 .FirstOrDefaultAsync(gr => gr.RoomId == roomIdString); // 条件是自定义的 RoomId 字符串
         }
 
@@ -127,25 +128,29 @@ namespace backend.Services
         /// <returns>加入成功返回 true，否则返回 false</returns>
         public async Task<bool> JoinRoomAsync(string roomId, string userId, Player player)
         {
+            
             var gameRoom = await GetRoomDetailsByRoomIdStringAsync(roomId);
+                 
             if (gameRoom == null)
             {
+                  
                 return false;
             }
 
             if (gameRoom.IsPrivate)
             {
+                //    Console.WriteLine($"房间不存在");
                 return false;
             }
-
             // 确保不是重复加入
-            if (gameRoom.Players.Any(p => p.UserId.ToString() == userId))
-            {
-                return false;
-            }
-
+            // if (gameRoom.Players.Any(p => p.UserId.ToString() == userId))
+            // {
+            //     return false;
+            // }
+            Console.WriteLine($"房间不存在");   
             // 加载用户
             var user = await _context.Users.FindAsync(int.Parse(userId));
+         
             if (user == null)
             {
                 return false; // 用户不存在
@@ -161,6 +166,7 @@ namespace backend.Services
             gameRoom.Players.Add(player);
 
             await _context.SaveChangesAsync();
+             Console.WriteLine($"用户 {user.Username} 加入房间 {roomId}");
             return true;
         }
 

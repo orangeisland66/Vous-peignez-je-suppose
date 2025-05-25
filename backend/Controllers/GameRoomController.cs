@@ -4,7 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using backend.Models; // 确保 GameRoom 模型在这里
-using backend.Services; // 确保 GameRoomService 在这里
+using backend.Services;
+using System.Runtime.InteropServices; // 确保 GameRoomService 在这里
 
 namespace backend.Controllers
 {
@@ -78,6 +79,7 @@ namespace backend.Controllers
             }
 
             var result = await _gameRoomService.JoinRoomAsync(roomId,userId, player);
+            Console.WriteLine($"加入房间结果: {result}");
             if (result)
             {
                 return Ok(new { success = true, message = "成功加入房间", roomId = roomId }); // 添加 success 字段
