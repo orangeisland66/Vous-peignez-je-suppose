@@ -35,7 +35,7 @@ namespace backend.Controllers
         // 创建一个新的游戏房间
         // 完整路由: POST /rooms/create
         [HttpPost("create")]
-        public async Task<IActionResult> CreateRoom([FromBody] GameRoom newRoom) 
+        public async Task<IActionResult> CreateRoom([FromBody] GameRoom newRoom)
         {
             if (newRoom == null || string.IsNullOrEmpty(newRoom.Name))
             {
@@ -66,7 +66,7 @@ namespace backend.Controllers
         // 加入一个已有的游戏房间
         // 完整路由: POST /rooms/join/{roomId}
         [HttpPost("join/{roomId}")]
-       public async Task<IActionResult> JoinRoom(
+        public async Task<IActionResult> JoinRoom(
         [FromRoute] string roomId,
         [FromQuery] string userId,
         [FromBody] Player player)
@@ -78,7 +78,7 @@ namespace backend.Controllers
                 return BadRequest(new { success = false, message = "玩家信息不完整" });
             }
 
-            var result = await _gameRoomService.JoinRoomAsync(roomId,userId, player);
+            var result = await _gameRoomService.JoinRoomAsync(roomId, userId, player);
             Console.WriteLine($"加入房间结果: {result}");
             if (result)
             {
@@ -97,7 +97,7 @@ namespace backend.Controllers
         [HttpGet("details/{roomId}")]
         public async Task<IActionResult> GetRoomDetails(int roomId)
         {
-             var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
+            var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
             if (room == null)
             {
                 return NotFound(new { success = false, message = "房间不存在" }); // 添加 success 字段
@@ -119,7 +119,7 @@ namespace backend.Controllers
             return Ok(new { success = true, room = room });
         }
 
-                // 新增的 API 端点，用于处理玩家离开或房主解散房间
+        // 新增的 API 端点，用于处理玩家离开或房主解散房间
         // 完整路由: DELETE /rooms/exit/{roomIdString}/{userId}
         [HttpDelete("exit/{roomIdString}/{userId}")]
         public async Task<IActionResult> ExitRoom(string roomIdString, int userId)
@@ -147,29 +147,71 @@ namespace backend.Controllers
 
             return Ok(new { success = true, message = result.Message, roomDisbanded = result.RoomDisbanded });
         }
-
-         // 开始游戏
-        // 完整路由: POST /rooms/start/{roomId}
-        [HttpPost("start/{roomId}")]
-        public async Task<IActionResult> StartGame(int roomId)
+        // 新增的 API 端点，用于开始游戏
+        // API 端点: POST /rooms/start-game/{roomIdString}
+        [HttpPost("start-game/{roomIdString}")]
+        public async Task<IActionResult> StartRoomGame(string roomIdString, [FromBody] StartGameRequestDto request)
         {
-            var result = await _gameRoomService.StartGameAsync(roomId);
-            if (result)
+            // 1. 验证输入参数
+            if (string.IsNullOrWhiteSpace(roomIdString))
             {
-                return Ok(new { success = true, message = "游戏已开始" });
+                return BadRequest(new { success = false, message = "房间ID (roomIdString) 不能为空。" });
+            }
+            if (request == null )
+            {
+                // 注意：这里的 UserId 是从请求体中获取的，代表发起操作的用户
+                return BadRequest(new { success = false, message = "请求体中的用户信息 (UserId) 无效或缺失。" });
+            }
+
+            // 2. 调用服务层方法
+            var result = await _gameRoomService.StartGameByRoomIdStringAsync(roomIdString, request.UserId);
+
+            // 3. 根据服务层返回的结果构造 HTTP 响应
+            if (result.Success)
+            {
+                // 游戏成功开始
+                return Ok(new { success = true, message = result.Message });
             }
             else
             {
-                return BadRequest(new { success = false, message = "游戏开始失败" });
+                // 处理服务层返回的失败情况
+                // 可以根据 result.Message 中的特定关键词来返回更具体的 HTTP 状态码
+                if (result.Message != null && result.Message.Contains("不存在"))
+                {
+                    return NotFound(new { success = false, message = result.Message }); // 404 Not Found
+                }
+                if (result.Message != null && (result.Message.Contains("权限") || result.Message.Contains("房主")))
+                {
+                    // 如果是权限问题，返回 403 Forbidden
+                    return StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = result.Message });
+                }
+                // 其他业务逻辑错误（例如，状态不对，人数不足）通常返回 400 Bad Request
+                return BadRequest(new { success = false, message = result.Message });
             }
         }
+
+        // // 开始游戏
+        // // 完整路由: POST /rooms/start/{roomId}
+        // [HttpPost("start/{roomId}")]
+        // public async Task<IActionResult> StartGame(int roomId)
+        // {
+        //     var result = await _gameRoomService.StartGameAsync(roomId);
+        //     if (result)
+        //     {
+        //         return Ok(new { success = true, message = "游戏已开始" });
+        //     }
+        //     else
+        //     {
+        //         return BadRequest(new { success = false, message = "游戏开始失败" });
+        //     }
+        // }
 
         // 获取游戏状态
         // 完整路由: GET /rooms/status/{roomId}
         [HttpGet("status/{roomId}")]
         public async Task<IActionResult> GetGameStatus(int roomId)
         {
-             var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
+            var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
             if (room == null)
             {
                 return NotFound(new { success = false, message = "游戏状态不可用" });
@@ -182,7 +224,7 @@ namespace backend.Controllers
         [HttpPost("end/{roomId}")]
         public async Task<IActionResult> EndGame(int roomId)
         {
-             var result = await _gameRoomService.EndGameAsync(roomId);
+            var result = await _gameRoomService.EndGameAsync(roomId);
             if (result)
             {
                 return Ok(new { success = true, message = "游戏结束" });
@@ -198,7 +240,7 @@ namespace backend.Controllers
         [HttpPost("set-private/{roomId}")]
         public async Task<IActionResult> SetPrivateStatus(int roomId, [FromBody] bool isPrivate)
         {
-             var result = await _gameRoomService.SetPrivateStatusAsync(roomId, isPrivate);
+            var result = await _gameRoomService.SetPrivateStatusAsync(roomId, isPrivate);
             if (result)
             {
                 return Ok(new { success = true, message = "房间状态已更新" });
@@ -211,7 +253,7 @@ namespace backend.Controllers
         [HttpPost("set-password/{roomId}")]
         public async Task<IActionResult> SetRoomPassword(int roomId, [FromBody] string password)
         {
-             var result = await _gameRoomService.SetRoomPasswordAsync(roomId, password);
+            var result = await _gameRoomService.SetRoomPasswordAsync(roomId, password);
             if (result)
             {
                 return Ok(new { success = true, message = "房间密码已更新" });
@@ -224,12 +266,17 @@ namespace backend.Controllers
         [HttpPost("set-max-players/{roomId}")]
         public async Task<IActionResult> SetMaxPlayers(int roomId, [FromBody] int maxPlayers)
         {
-             var result = await _gameRoomService.SetMaxPlayersAsync(roomId, maxPlayers);
+            var result = await _gameRoomService.SetMaxPlayersAsync(roomId, maxPlayers);
             if (result)
             {
                 return Ok(new { success = true, message = "房间最大人数已更新" });
             }
             return BadRequest(new { success = false, message = "更新房间最大人数失败" });
+        }
+        // 这个 DTO 用于从请求体中接收开始游戏操作所需的数据，这里我们只需要 UserId
+        public class StartGameRequestDto 
+        {
+            public int UserId { get; set; }
         }
     }
 }
