@@ -36,7 +36,7 @@
             <span v-if="confirmPasswordError" class="error-message">{{ confirmPasswordError }}</span>
           </div>
 
-          <button type="submit" class="submit-btn">注册并登录</button>
+          <button type="submit" class="submit-btn">注册</button>
           <div class="login-redirect">
             <span>已有账号？</span>
             <button type="button" class="link-btn" @click="toLogin">去登录</button>
@@ -113,8 +113,8 @@ export default {
       this.validateConfirmPassword();
 
       if (this.usernameError || this.passwordError || this.confirmPasswordError) {
-         this.error = '请检查输入信息'; // 如果有前端验证错误，显示提示
-         return;
+        this.error = '请检查输入信息'; // 如果有前端验证错误，显示提示
+        return;
       }
 
       if (!this.username || !this.email || !this.password || !this.confirmPassword) {
