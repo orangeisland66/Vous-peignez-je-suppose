@@ -44,24 +44,24 @@ export function checkRoundResultPermission(to, from, next) {
   return next()
 }
 export function checkRoomPermission(to, from, next) {
-  // const isLoggedIn = !!localStorage.getItem('token')
-  // if (!isLoggedIn) {
-  //   return next({ name: 'Login' })
-  // }
+  const isLoggedIn = !!localStorage.getItem('token')
+  if (!isLoggedIn) {
+    return next({ name: 'Login' })
+  }
 
-  // const roomId = to.params.id
-  // const userId = store.state.user?.id
-  // const rooms = store.state.gameRoom?.rooms || []
-  // const room = rooms.find(r => String(r.id) === String(roomId))
+  const roomId = to.params.id
+  const userId = store.state.user?.id
+  const rooms = store.state.gameRoom?.rooms || []
+  const room = rooms.find(r => String(r.id) === String(roomId))
 
-  // console.log('checkRoomPermission 调试:')
-  // console.log('roomId:', roomId)
-  // console.log('userId:', userId)
-  // console.log('room:', room)
+  console.log('checkRoomPermission 调试:')
+  console.log('roomId:', roomId)
+  console.log('userId:', userId)
+  console.log('room:', room)
 
-  // if (!room || !room.members.includes(userId)) {
-  //   return next({ name: 'Lobby' })
-  // }
+  if (!room || !room.members.includes(userId)) {
+    return next({ name: 'Lobby' })
+  }
 
   return next()
 }

@@ -45,7 +45,11 @@ const mutations =
   },
   ADD_PLAYER(state, player)
   {
-    state.players.push(player)
+    const existingPlayer = state.players.find(p => p.username === player.username);
+    console.log('existingPlayer:', existingPlayer)
+    if (!existingPlayer) {
+      state.players.push(player);
+    }
   },
   REMOVE_PLAYER(state, playerId)
   {

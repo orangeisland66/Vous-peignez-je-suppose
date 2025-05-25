@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
     <div class="game-room-list">
         <div class="controls">
             <h2>Game Rooms</h2>
@@ -155,4 +155,4 @@ export default {
     display: flex;
     justify-content: center;
 }
-</style>
+</style> -->

@@ -142,11 +142,11 @@ namespace backend.Services
                 //    Console.WriteLine($"房间不存在");
                 return false;
             }
-            // 确保不是重复加入
-            // if (gameRoom.Players.Any(p => p.UserId.ToString() == userId))
-            // {
-            //     return false;
-            // }
+            //确保不是重复加入
+            if (gameRoom.Players.Any(p => p.UserId.ToString() == userId))
+            {
+                return true;
+            }
             Console.WriteLine($"房间不存在");   
             // 加载用户
             var user = await _context.Users.FindAsync(int.Parse(userId));

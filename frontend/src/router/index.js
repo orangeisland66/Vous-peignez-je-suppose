@@ -55,11 +55,11 @@ const routes = [
   },
   // 等待游戏开始页面
   { 
-    path: '/room/:roomId/waiting', // <--- 确保这里的参数名是 'roomId'
+    path: '/room/join/:roomId', // <--- 确保这里的参数名是 'roomId'
     name: 'WaitingRoom',
-    component: () => import('../views/WaitingRoom.vue'), // 确保路径正确
+    component: WaitingRoom,
     // meta: { requiresAuth: true } ,// 如果需要登录
-    beforeEnter:checkRoomPermission
+    // beforeEnter:checkRoomPermission
   },
   // 进入游戏页面
   { 
