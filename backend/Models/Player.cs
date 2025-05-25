@@ -56,7 +56,6 @@ namespace backend.Models
 
         public Player()
         {
-            Id = 1; // 默认值
             Score = 0;
             Status = PlayerStatus.Waiting;  // 默认状态为待机
             HasGuessed = false;
