@@ -61,7 +61,7 @@
                     </div>
                     <div class="capacity-text">人数:{{ room.players.length }}/{{ room.maxPlayers }}</div>
                   </div>
-                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId)"
+                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId, user)"
                     class="join-btn">加入游戏</button>
                   <div v-else class="full-badge">房间已满</div>
                 </div>
@@ -75,98 +75,130 @@
 </template>
 
 <script>
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useStore } from 'vuex';
+
 export default {
   name: 'Lobby',
-  data() {
-    return {
-      rooms: [],
-      user: null,
-      currentUserId: null//用于储存从Local Storage中获取当前用户的ID
-    }
-  },
-async created() {
-    console.log('Lobby created hook called.');
-
-    // **1. 主要依赖从 Local Storage 读取 'userId'**
-    const userIdString = localStorage.getItem('userId');
-    console.log('Lobby.vue - userIdString from local storage:', userIdString);
-
-    if (userIdString) {
-      this.currentUserId = parseInt(userIdString); // 确保是整数类型
-      console.log('Lobby.vue - Parsed currentUserId:', this.currentUserId);
-
-      if (isNaN(this.currentUserId)) {
-          console.error('Lobby.vue - Parsed userId is NaN. Redirecting to login.');
-          this.$toast?.error('用户ID无效，请重新登录');
-          localStorage.removeItem('userId'); // 清除无效的 userId
-          this.$router.push('/login');
-          return;
-      }
-
-      // **2. 调用 fetchUserInfo 方法，并传递获取到的 currentUserId**
-      await this.fetchUserInfo(this.currentUserId);
-      await this.fetchRooms(); // 获取房间列表
-
-    } else {
-      // 如果 Local Storage 中没有 userId，说明用户未登录或登录信息已清除
-      console.error('Lobby.vue - userId not found in local storage. Redirecting to login.');
-      this.$toast?.error('未检测到登录用户，请重新登录');
-      this.$router.push('/login');
-    }
-},
-  methods: {
-    async fetchRooms() {
+  setup() {
+    const router = useRouter();
+    const store = useStore();
+    const rooms = ref([]);
+    const user = ref(null);
+    const currentUserId = ref(null);
+    
+    const fetchRooms = async () => {
       try {
-        console.log('Fetching rooms list...');//输出日志信息
-        const res = await fetch('/api/rooms/list')
-        if (!res.ok) throw new Error('获取房间列表失败')
-        this.rooms = await res.json()
+        console.log('Fetching rooms list...');
+        const res = await fetch('/api/rooms/list');
+        if (!res.ok) throw new Error('获取房间列表失败');
+        rooms.value = await res.json();
       } catch (e) {
-        console.error(e)
-        this.$toast?.error('获取房间列表失败')
+        console.error(e);
+        this.$toast?.error('获取房间列表失败');
       }
-    },
-    async fetchUserInfo(userId) { // **<-- 接收 userId 参数**
+    };
+
+    const fetchUserInfo = async (userId) => {
       try {
         console.log('Fetching user info for userId:', userId);
-        // **修改 fetch 调用，在 URL 中添加 userId 查询参数**
-        // 根据你的 UserController.cs，GetUserProfile 期望 userId 查询参数
-        const res = await fetch(`/api/users/profile?userId=${userId}`); // **<-- 添加查询参数**
+        const res = await fetch(`/api/users/profile?userId=${userId}`);
         console.log('Fetching user info from URL:', `/api/users/profile?userId=${userId}`);
 
         if (!res.ok) {
-          // 如果响应状态码不是 2xx，抛出包含状态码和文本的错误
-          const errorText = await res.text(); // 尝试获取错误响应体文本
+          const errorText = await res.text();
           throw new Error(`获取用户信息失败: 状态码 ${res.status}, 响应: ${errorText}`);
         }
-        this.user = await res.json();
-        console.log('User info fetched:', this.user); // 添加日志确认获取到用户信息
+        user.value = await res.json();
+        console.log('User info fetched:', user.value);
       } catch (e) {
         console.error('获取用户信息失败:', e);
-        this.user = null; // 获取失败时清空用户信息
-        this.$toast?.error(e.message || '获取用户信息失败'); // 显示错误信息
-        // 如果获取用户信息失败，可能是 token 过期或无效，考虑重定向到登录页
-        // this.$router.push('/login');
+        user.value = null;
+        this.$toast?.error(e.message || '获取用户信息失败');
       }
-    },
-    createRoom() {
-      this.$router.push('/room/create')
-    },
-    refreshRooms() {
-      this.fetchRooms()
-    },
-    goToSettings() {
-      this.$router.push('/settings')
-    },
-    joinRoom(roomId) {
-      console.log('Joining room with ID:', roomId)
-      this.$router.push(`/room/${roomId}/waiting`)
-    },
-    editNickname() {
-      this.$router.push('/profile')
-    }
+    };
+
+    const createRoom = () => {
+      router.push('/room/create');
+    };
+
+    const refreshRooms = () => {
+      fetchRooms();
+    };
+
+    const goToSettings = () => {
+      router.push('/settings');
+    };
+
+    const joinRoom = async (roomId, user) => {
+      try {
+        console.log('Joining room with ID:', roomId);
+        console.log('User info:', user);
+        const player = {
+                    IsHost: false,
+                    Username: user.username, 
+                    UserId: user.userId, 
+                    GameRoomId: roomId, 
+                    GameRoom:null,
+                    User:user,
+                    Score: 0,
+                    Status: 1, 
+                    IsHost: false,
+                    HasDrawn: false,
+                    LeftAt: null,
+                    LastDrawingTime: null,
+                    HasGuessed: false,
+                    JoinedAt: new Date().toISOString()
+                };
+        await store.dispatch('gameRoom/joinRoom', { roomId, player: player });
+        router.push(`/room/join/${roomId}`);
+      } catch (error) {
+        console.error('Failed to join room:', error);
+      }
+    };
+
+    const editNickname = () => {
+      router.push('/profile');
+    };
+
+    onMounted(async () => {
+      console.log('Lobby created hook called.');
+      const userIdString = localStorage.getItem('userId');
+      console.log('Lobby.vue - userIdString from local storage:', userIdString);
+
+      if (userIdString) {
+        currentUserId.value = parseInt(userIdString);
+        console.log('Lobby.vue - Parsed currentUserId:', currentUserId.value);
+
+        if (isNaN(currentUserId.value)) {
+          console.error('Lobby.vue - Parsed userId is NaN. Redirecting to login.');
+          this.$toast?.error('用户ID无效，请重新登录');
+          localStorage.removeItem('userId');
+          router.push('/login');
+          return;
+        }
+
+        await fetchUserInfo(currentUserId.value);
+        await fetchRooms();
+      } else {
+        console.error('Lobby.vue - userId not found in local storage. Redirecting to login.');
+        this.$toast?.error('未检测到登录用户，请重新登录');
+        router.push('/login');
+      }
+    });
+
+    return {
+      rooms,
+      user,
+      createRoom,
+      refreshRooms,
+      goToSettings,
+      joinRoom,
+      editNickname
+    };
   }
-}
+};
 </script>
 
 <style scoped>

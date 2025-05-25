@@ -125,9 +125,9 @@ namespace backend.Services
         /// <param name="roomId">房间 ID</param>
         /// <param name="player">要加入房间的玩家</param>
         /// <returns>加入成功返回 true，否则返回 false</returns>
-        public async Task<bool> JoinRoomAsync(int roomId, Player player)
+        public async Task<bool> JoinRoomAsync(string roomId, Player player)
         {
-            var gameRoom = await GetRoomDetailsAsync(roomId);
+            var gameRoom = await GetRoomDetailsByRoomIdStringAsync(roomId);
             if (gameRoom == null)
             {
                 return false;

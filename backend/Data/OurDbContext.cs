@@ -36,10 +36,11 @@ namespace backend.Data
                 .HasIndex(u => u.Email)
                 .IsUnique();
 
-            modelBuilder.Entity<GameRoom>()
+                modelBuilder.Entity<GameRoom>()
                 .HasMany(gr => gr.Players)  // GameRoom 有多个 Players
                 .WithOne(p => p.GameRoom)   // Player 属于一个 GameRoom,添加反向导航属性
                 .HasForeignKey(p => p.GameRoomId) // 外键指向 GameRoomId
+                .HasPrincipalKey(gr => gr.RoomId) // 主键使用 GameRoom 的 RoomId
                 .OnDelete(DeleteBehavior.Cascade); // 可选：删除房间时级联删除玩家
 
             // **新增：配置 GameRoom 与 Creator (User) 的关系 (一对多，一个 User 可以创建多个 GameRoom)**

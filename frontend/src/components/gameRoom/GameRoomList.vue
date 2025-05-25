@@ -95,6 +95,7 @@ export default {
         const joinRoom = async (roomId) => {
             try {
                         // 获取当前用户信息，假设从 localStorage 中获取
+                
                 const userIdString = localStorage.getItem('userId');
                 const userName = localStorage.getItem('userName');
                 const currentUser = {

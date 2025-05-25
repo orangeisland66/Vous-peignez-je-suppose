@@ -12,8 +12,8 @@ using backend.Data;
 namespace backend.Migrations
 {
     [DbContext(typeof(OurDbContext))]
-    [Migration("20250524060304_UpdatePlayerModelAndRelations")]
-    partial class UpdatePlayerModelAndRelations
+    [Migration("20250525093958_new")]
+    partial class @new
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -176,7 +176,8 @@ namespace backend.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<string>("RoomId")
-                        .HasColumnType("longtext");
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("RoomPassword")
                         .HasColumnType("longtext");
@@ -229,8 +230,9 @@ namespace backend.Migrations
                     b.Property<int?>("GameId")
                         .HasColumnType("int");
 
-                    b.Property<int>("GameRoomId")
-                        .HasColumnType("int");
+                    b.Property<string>("GameRoomId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
 
                     b.Property<bool>("HasDrawn")
                         .HasColumnType("tinyint(1)");
@@ -552,6 +554,7 @@ namespace backend.Migrations
                     b.HasOne("backend.Models.GameRoom", "GameRoom")
                         .WithMany("Players")
                         .HasForeignKey("GameRoomId")
+                        .HasPrincipalKey("RoomId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

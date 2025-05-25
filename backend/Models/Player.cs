@@ -24,7 +24,7 @@ namespace backend.Models
         public virtual User User { get; set; }
 
         // 玩家所属的游戏房间Id
-        public int GameRoomId { get; set; }
+        public string GameRoomId { get; set; }
 
         // 玩家所属的房间
         [ForeignKey("GameRoomId")]
@@ -56,6 +56,7 @@ namespace backend.Models
 
         public Player()
         {
+            Id = 1; // 默认值
             Score = 0;
             Status = PlayerStatus.Waiting;  // 默认状态为待机
             HasGuessed = false;

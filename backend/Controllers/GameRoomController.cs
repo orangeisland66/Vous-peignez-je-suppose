@@ -65,12 +65,13 @@ namespace backend.Controllers
         // 加入一个已有的游戏房间
         // 完整路由: POST /rooms/join/{roomId}
         [HttpPost("join/{roomId}")]
-        public async Task<IActionResult> JoinRoom(int roomId, [FromBody] Player player)
+        public async Task<IActionResult> JoinRoom(string roomId, [FromBody] Player player)
         {
+            Console.WriteLine($"接收到加入房间的请求，房间 ID: {roomId}, 玩家: {player?.Username}");
             // ... (代码保持不变) ...
             if (player == null || string.IsNullOrEmpty(player.Username))
             {
-                 return BadRequest(new { success = false, message = "玩家信息不完整" });
+                return BadRequest(new { success = false, message = "玩家信息不完整" });
             }
 
             var result = await _gameRoomService.JoinRoomAsync(roomId, player);

@@ -121,6 +121,33 @@ const apiService = {
         console.error(`获取房间 ${roomIdString} 详情失败:`, error);
         throw error;
     }
+  },
+
+    // 添加 joinRoom 函数
+  async joinRoom(roomId, player) {
+    console.log('Attempting to join room with ID:', roomId);
+    try {
+      console.log('Player data:', player);
+
+      const response = await axios.post(`${API_BASE_URL}/rooms/join/${roomId}`, player);
+      console.error('Validation errors:', error.response.data.errors);
+      // const response = await axios.post(`${API_BASE_URL}/rooms/join/${roomId}`);
+      console.log('Backend response (joinRoom):', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error joining room:', error);
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+        throw new Error(error.response.data.message || `加入房间失败：状态码 ${error.response.status}`);
+      } else if (error.request) {
+        console.error('Error request:', error.request);
+        throw new Error('加入房间失败：无法连接到服务器');
+      } else {
+        console.error('Error message:', error.message);
+        throw new Error(`加入房间失败：${error.message}`);
+      }
+    }
 }
 };
 
