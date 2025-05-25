@@ -111,6 +111,31 @@ const apiService = {
     }
   },
 
+  async  startGameInRoom(roomIdString, userId) {
+    console.log(`[apiService] Attempting to start game in room: ${roomIdString} by user ID: ${userId}`);
+    try {
+      // 调用后端的 "start-game" API 端点
+      // 请求方法是 POST
+      // URL 包含 roomIdString
+      // 请求体包含 userId
+      const response = await axios.post(
+        `${API_BASE_URL}/rooms/start-game/${roomIdString}`, // URL
+        { userId: userId } // 请求体 (会被序列化为 JSON: { "userId": value_of_userId })
+      );
+      console.log('[apiService] startGameInRoom response:', response.data);
+      return response.data; // 后端应该返回类似 { success: true/false, message: "..." } 的结构
+    } catch (error) {
+      console.error(`[apiService] Error starting game in room ${roomIdString}:`, error.response || error.message || error);
+      // 尝试从 error.response.data 中获取后端返回的错误信息
+      if (error.response && error.response.data && error.response.data.message) {
+        throw new Error(error.response.data.message); // 抛出后端提供的错误消息
+      } else if (error.response && error.response.statusText) {
+        throw new Error(`开始游戏失败: ${error.response.statusText} (Status: ${error.response.status})`);
+      } else {
+        throw new Error('开始游戏时发生网络或未知错误，请检查控制台。');
+      }
+    }
+  },
     async getRoomDetails(roomIdString) {
     try {
         const url = `${API_BASE_URL}/rooms/details/by-string-id/${roomIdString}`;

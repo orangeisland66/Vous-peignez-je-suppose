@@ -147,7 +147,7 @@ namespace backend.Services
             {
                 return true;
             }
- 
+
             // 加载用户
             var user = await _context.Users.FindAsync(int.Parse(userId));
 
@@ -287,6 +287,63 @@ namespace backend.Services
             gameRoom.Players.Remove(playerToRemove);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<ServiceResponse> StartGameByRoomIdStringAsync(string roomIdString, int requestingUserId)
+        {
+            // 1. 查找房间，同时加载玩家信息以便进行权限验证
+            var room = await _context.GameRooms 
+                                     .Include(r => r.Players) // 加载房间内的所有 Player 记录
+                                     .ThenInclude(p => p.User) // 对于每个 Player，加载其关联的 User 信息
+                                     .FirstOrDefaultAsync(r => r.RoomId == roomIdString);
+
+            if (room == null)
+            {
+                return new ServiceResponse { Success = false, Message = $"房间 '{roomIdString}' 不存在。" };
+            }
+
+            // 2. 检查房间当前状态
+            if (room.Status != RoomStatus.Waiting)
+            {
+                string statusMessage = room.Status switch
+                {
+                    RoomStatus.Playing => "游戏已经进行中。",
+                    RoomStatus.Completed => "游戏已结束，无法重新开始。",
+                    RoomStatus.Closed => "房间已关闭。",
+                    _ => "房间当前状态不允许开始游戏。"
+                };
+                return new ServiceResponse { Success = false, Message = statusMessage };
+            }
+
+            // 3. 权限验证：检查发起请求的用户是否为房主
+            var hostPlayerRecord = room.Players.FirstOrDefault(p => p.IsHost);
+            if (hostPlayerRecord == null || hostPlayerRecord.User == null || hostPlayerRecord.User.Id != requestingUserId)
+            {
+                // 如果找不到房主记录，或者房主记录没有关联用户，或者关联用户的ID与请求者ID不符
+                return new ServiceResponse { Success = false, Message = "只有房主才能开始游戏。" };
+            }
+
+            // 4. (可选) 检查其他条件，例如最小玩家数
+            if (room.Players.Count < 2)
+            {
+                return new ServiceResponse { Success = false, Message = "玩家人数不足（至少需要2人），无法开始游戏。" };
+            }
+
+            // 5. 更新游戏状态
+            room.Status = RoomStatus.Playing; // 将状态设置为进行中
+
+            try
+            {
+                _context.GameRooms.Update(room); // 标记实体为已修改 (对于跟踪的实体，EF Core 通常会自动检测变化)
+                await _context.SaveChangesAsync(); // 保存更改到数据库
+                return new ServiceResponse { Success = true, Message = "游戏已成功开始。" };
+            }
+            catch (Exception ex)
+            {
+                // 在实际应用中，这里应该使用更完善的日志记录机制
+                Console.WriteLine($"Error starting game (RoomIdString: {roomIdString}): {ex.ToString()}");
+                return new ServiceResponse { Success = false, Message = "开始游戏时发生数据库错误，请稍后重试。" };
+            }
         }
 
         /// <summary>
@@ -465,11 +522,16 @@ namespace backend.Services
             await _context.SaveChangesAsync();
             return true;
         }
-            public class LeaveRoomResult
+        public class LeaveRoomResult
         {
             public bool Success { get; set; }
             public string? Message { get; set; }
             public bool RoomDisbanded { get; set; } = false;
+        }
+        public class ServiceResponse // 请确保这个类只定义一次
+        {
+            public bool Success { get; set; }
+            public string? Message { get; set; }
         }
     }
 }
