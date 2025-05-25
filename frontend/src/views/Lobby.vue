@@ -61,7 +61,7 @@
                     </div>
                     <div class="capacity-text">人数:{{ room.players.length }}/{{ room.maxPlayers }}</div>
                   </div>
-                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.id)"
+                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId)"
                     class="join-btn">加入游戏</button>
                   <div v-else class="full-badge">房间已满</div>
                 </div>
@@ -158,8 +158,9 @@ async created() {
     goToSettings() {
       this.$router.push('/settings')
     },
-    joinRoom(id) {
-      this.$router.push(`/room/${id}/waiting`)
+    joinRoom(roomId) {
+      console.log('Joining room with ID:', roomId)
+      this.$router.push(`/room/${roomId}/waiting`)
     },
     editNickname() {
       this.$router.push('/profile')

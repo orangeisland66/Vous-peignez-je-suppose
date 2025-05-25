@@ -10,7 +10,8 @@ namespace backend.Controllers
 {
     // **修改控制器级别的路由**
     // 将 [Route("api/[controller]")] 改为 [Route("rooms")]
-    [Route("rooms")] // <-- 修改这里
+    [Route("rooms")]
+    // [Route("rooms")] // <-- 修改这里
     [ApiController]
     public class GameRoomController : ControllerBase
     {
@@ -103,13 +104,12 @@ namespace backend.Controllers
         [HttpGet("details/by-string-id/{roomIdString}")]
         public async Task<IActionResult> GetRoomDetailsByStringId(string roomIdString)
         {
-            // 调用新添加的服务层方法
+            Console.WriteLine($"接收到获取房间详情的请求，房间 ID 字符串: {roomIdString}");
             var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomIdString);
             if (room == null)
             {
                 return NotFound(new { success = false, message = "房间不存在 (ID: " + roomIdString + ")" });
             }
-            // 确保 JSON 序列化配置了 ReferenceHandler.IgnoreCycles
             return Ok(new { success = true, room = room });
         }
 

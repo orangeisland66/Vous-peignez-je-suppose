@@ -182,6 +182,7 @@ export default {
       try {
         console.log(`WaitingRoom: 正在获取房间 ${this.roomIdFromRoute} 的详细信息...`);
         const response = await apiService.getRoomDetails(this.roomIdFromRoute);
+        console.log('WaitingRoom: 获取房间详情的响应:', response);
         if (response && response.success && response.room) {
           this.room = response.room;
           console.log('WaitingRoom: 成功获取房间数据:', this.room);

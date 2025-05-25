@@ -94,8 +94,16 @@ export default {
 
         const joinRoom = async (roomId) => {
             try {
-                await store.dispatch('gameRoom/joinRoom', roomId)
-                router.push(`/room/${roomId}`)
+                        // 获取当前用户信息，假设从 localStorage 中获取
+                const userIdString = localStorage.getItem('userId');
+                const userName = localStorage.getItem('userName');
+                const currentUser = {
+                    id: parseInt(userIdString),
+                    username: userName
+                };
+                await store.dispatch('gameRoom/joinRoom', { roomId, player: currentUser })
+                // console.log('Joined room:', roomId)
+                router.push(`/room/join/${roomId}`)
             } catch (error) {
                 console.error('Failed to join room:', error)
             }

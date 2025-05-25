@@ -111,16 +111,17 @@ const apiService = {
     }
   },
 
-    async getRoomDetails(roomIdString) { // roomIdString 是从 URL 获取的8位字符串房间号
+    async getRoomDetails(roomIdString) {
     try {
-      // 调用新的 API 端点
-      const response = await axios.get(`${API_BASE_URL}/rooms/details/by-string-id/${roomIdString}`);
-      return response.data; // 期望后端返回 { success: true, room: { ... } }
+        const url = `${API_BASE_URL}/rooms/details/by-string-id/${roomIdString}`;
+        console.log('请求的 URL:', url);
+        const response = await axios.get(url);
+        return response.data;
     } catch (error) {
-      console.error(`获取房间 ${roomIdString} 详情失败:`, error);
-      throw error; // 让调用方处理
+        console.error(`获取房间 ${roomIdString} 详情失败:`, error);
+        throw error;
     }
-  },
+}
 };
 
 export default apiService;
