@@ -100,15 +100,16 @@ import apiService from '@/services/apiService'
 
 export default {
   name: 'WaitingRoom',
-  data() {
-    return {
-      room: null,        // 存储从后端获取的整个房间对象
-      currentUser: null, // 存储当前登录用户的信息
-      isLoading: true,   // 加载状态标志
-      errorMessage: '',  // 错误信息
-      // minPlayers: 4,  // 如果需要，可以从 room.gameConfig 或类似地方获取
-    };
-  },
+ data() {
+  return {
+    room: null,
+    currentUser: null,
+    isLoading: true,
+    errorMessage: '',
+    pollInterval: null, // 轮询定时器
+    pollIntervalMs: 3000, // 轮询间隔（3秒）
+  };
+},
   computed: {
     // 从路由参数获取房间的字符串ID
     roomIdFromRoute() {
@@ -169,23 +170,43 @@ export default {
 
       // 3. 调用 API 获取房间详情
       await this.fetchRoomDetails();
-    },
-  
+
+      if (this.roomIdFromRoute && this.currentUser) {
+      this.startPolling();
+  }
+  },
+  beforeUnmount() {
+  this.stopPolling(); // 组件销毁时停止轮询
+  },
   // mounted() {
   //   // 为了测试，直接使用静态数据而不是从API获取
   //   console.log('WaitingRoom mounted, using mock data for testing')
   // },
   methods: {
-    async fetchRoomDetails() {
-      this.isLoading = true;
-      this.errorMessage = ''; // 重置错误信息
-      try {
-        console.log(`WaitingRoom: 正在获取房间 ${this.roomIdFromRoute} 的详细信息...`);
-        const response = await apiService.getRoomDetails(this.roomIdFromRoute);
-        console.log('WaitingRoom: 获取房间详情的响应:', response);
-        if (response && response.success && response.room) {
-          this.room = response.room;
-          console.log('WaitingRoom: 成功获取房间数据:', this.room);
+  startPolling() {
+    this.stopPolling(); // 防止重复启动
+    this.pollInterval = setInterval(() => {
+      this.fetchRoomDetails(false); // 轮询调用获取房间数据的方法
+    }, this.pollIntervalMs);
+  },
+
+  stopPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+  },
+
+  async fetchRoomDetails(if_loading = true) {
+    this.isLoading = if_loading;
+    this.errorMessage = ''; // 重置错误信息
+    try {
+      console.log(`WaitingRoom: 正在获取房间 ${this.roomIdFromRoute} 的详细信息...`);
+      const response = await apiService.getRoomDetails(this.roomIdFromRoute);
+      console.log('WaitingRoom: 获取房间详情的响应:', response);
+      if (response && response.success && response.room) {
+        this.room = response.room;
+        console.log('WaitingRoom: 成功获取房间数据:', this.room);
           // 验证数据结构 (可选，用于调试)
           if (!this.room.roomId) console.warn("后端返回的 room 对象缺少 roomId 字符串");
           if (!this.room.players) console.warn("后端返回的 room 对象缺少 players 列表");
