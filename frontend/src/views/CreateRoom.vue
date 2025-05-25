@@ -27,13 +27,7 @@
             <div class="form-group">
               <label for="room-name">房间名称</label>
               <div class="input-wrapper">
-                <input
-                  id="room-name"
-                  v-model.trim="room.name"
-                  type="text"
-                  placeholder="为您的房间起个名字..."
-                  required
-                />
+                <input id="room-name" v-model.trim="room.name" type="text" placeholder="为您的房间起个名字..." required />
               </div>
             </div>
 
@@ -43,15 +37,8 @@
               <div class="range-selector">
                 <span class="range-value">{{ room.maxPlayers }}人</span>
                 <div class="slider-container">
-                  <input
-                    id="max-players"
-                    type="range"
-                    v-model.number="room.maxPlayers"
-                    min="2"
-                    max="12"
-                    step="2"
-                    class="range-slider"
-                  />
+                  <input id="max-players" type="range" v-model.number="room.maxPlayers" min="2" max="12" step="2"
+                    class="range-slider" />
                   <div class="slider-markers">
                     <span>2</span>
                     <span>4</span>
@@ -68,13 +55,8 @@
             <div class="form-group">
               <label for="game-rounds">游戏回合</label>
               <div class="rounds-selector">
-                <div
-                  v-for="rounds in [4, 6, 8, 10]"
-                  :key="rounds"
-                  @click="room.rounds = rounds"
-                  class="round-option"
-                  :class="{ active: room.rounds === rounds }"
-                >
+                <div v-for="rounds in [4, 6, 8, 10]" :key="rounds" @click="room.rounds = rounds" class="round-option"
+                  :class="{ active: room.rounds === rounds }">
                   {{ rounds }}
                 </div>
               </div>
@@ -84,11 +66,7 @@
             <div class="form-group">
               <label>隐私设置</label>
               <div class="toggle-container">
-                <div
-                  class="toggle-switch"
-                  :class="{ 'is-private': room.privacy === 'private' }"
-                  @click="togglePrivacy"
-                >
+                <div class="toggle-switch" :class="{ 'is-private': room.privacy === 'private' }" @click="togglePrivacy">
                   <div class="toggle-handle"></div>
                 </div>
                 <div class="toggle-labels">
@@ -102,13 +80,8 @@
             <div v-if="room.privacy === 'private'" class="form-group password-field">
               <label for="room-password">房间密码</label>
               <div class="input-wrapper">
-                <input
-                  id="room-password"
-                  v-model.trim="room.password"
-                  type="password"
-                  placeholder="设置一个密码以保护房间"
-                  maxlength="12"
-                />
+                <input id="room-password" v-model.trim="room.password" type="password" placeholder="设置一个密码以保护房间"
+                  maxlength="12" />
               </div>
             </div>
           </div>
@@ -125,13 +98,8 @@
             </div>
 
             <div class="categories-grid">
-              <div
-                v-for="cat in categories"
-                :key="cat.value"
-                class="category-card"
-                :class="{ selected: room.categories.includes(cat.value) }"
-                @click="toggleCategory(cat.value)"
-              >
+              <div v-for="cat in categories" :key="cat.value" class="category-card"
+                :class="{ selected: room.categories.includes(cat.value) }" @click="toggleCategory(cat.value)">
                 <div class="category-icon">{{ cat.icon }}</div>
                 <div class="category-name">{{ cat.label }}</div>
                 <div class="category-check">✓</div>
@@ -192,7 +160,7 @@ export default {
     }
   },
   methods: {
-    
+
     // 生成房间号的函数
     generateRoomId(length) {
       const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -218,7 +186,7 @@ export default {
       }
     },
     async handleCreate() {
-        console.log('handleCreate method called.'); // <-- 添加这一行
+      console.log('handleCreate method called.'); // <-- 添加这一行
       // 基础校验
       if (!this.room.name) {
         this.$toast?.error('请输入房间名称') || alert('请输入房间名称');
@@ -234,18 +202,18 @@ export default {
       }
 
       try {
-                // **0. 获取当前登录用户的 ID**
+        // **0. 获取当前登录用户的 ID**
         const userIdString = localStorage.getItem('userId');
         if (!userIdString) {
-            this.$toast?.error('用户未登录，无法创建房间') || alert('用户未登录，无法创建房间');
-            this.$router.push('/login');
-            return;
+          this.$toast?.error('用户未登录，无法创建房间') || alert('用户未登录，无法创建房间');
+          this.$router.push('/login');
+          return;
         }
         const creatorId = parseInt(userIdString);
         if (isNaN(creatorId)) {
-            this.$toast?.error('用户信息错误，无法创建房间') || alert('用户信息错误，无法创建房间');
-            this.$router.push('/login');
-            return;
+          this.$toast?.error('用户信息错误，无法创建房间') || alert('用户信息错误，无法创建房间');
+          this.$router.push('/login');
+          return;
         }
         // **1. 生成房间号**
         const newRoomId = this.generateRoomId(8); // 调用生成函数
@@ -274,18 +242,18 @@ export default {
         // **4. 处理后端响应并获取房间ID**
         // 假设后端成功时返回的数据结构是 { success: true, roomId: '...', ... }
         if (res && res.success) {
-           const createdRoomId = res.roomId; // 从后端响应中获取房间ID
-           console.log('Room created successfully. Room ID:', createdRoomId);
+          const createdRoomId = res.roomId; // 从后端响应中获取房间ID
+          console.log('Room created successfully. Room ID:', createdRoomId);
 
-           // **5. 导航到新创建的房间页面**
-           // 使用获取到的房间ID进行跳转
-        this.$router.push(`/room/join/${res.roomId}`);
+          // **5. 导航到新创建的房间页面**
+          // 使用获取到的房间ID进行跳转
+          this.$router.push(`/room/join/${res.roomId}`);
 
         } else {
-           // 处理后端返回的创建失败信息 (如果后端提供了)
-           const errorMessage = res?.message || '创建房间失败，未知错误';
-           console.error('创建房间失败:', errorMessage);
-           this.$toast?.error(errorMessage) || alert(errorMessage);
+          // 处理后端返回的创建失败信息 (如果后端提供了)
+          const errorMessage = res?.message || '创建房间失败，未知错误';
+          console.error('创建房间失败:', errorMessage);
+          this.$toast?.error(errorMessage) || alert(errorMessage);
         }
       } catch (error) {
         console.error('创建房间失败:', error);
@@ -612,8 +580,15 @@ export default {
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Categories Section */
@@ -710,12 +685,13 @@ export default {
 
 .create-button {
   background: var(--primary);
-  color: white;
+  color: #4F46E5;
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
 }
 
 .create-button:hover {
   background: var(--primary-dark);
+  color: white;
   transform: translateY(-3px);
   box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
 }

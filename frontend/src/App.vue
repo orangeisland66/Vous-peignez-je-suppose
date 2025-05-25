@@ -7,7 +7,6 @@
           <router-link to="/lobby" class="nav-link">大厅</router-link>
           <router-link to="/room/create" class="nav-link">创建房间</router-link>
           <router-link to="/profile" class="nav-link">个人中心</router-link>
-          <router-link to="/settings" class="nav-link">设置</router-link>
         </div>
       </div>
     </nav>

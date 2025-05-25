@@ -28,9 +28,9 @@
             <div class="action-icon">↻</div>
             <span class="action-text">刷新列表</span>
           </button>
-          <button @click="goToSettings" class="action-card settings">
+          <button @click="goToProfile" class="action-card profile">
             <div class="action-icon">⚙</div>
-            <span class="action-text">设置</span>
+            <span class="action-text">个人资料</span>
           </button>
         </aside>
 
@@ -61,7 +61,7 @@
                     </div>
                     <div class="capacity-text">人数:{{ room.players.length }}/{{ room.maxPlayers }}</div>
                   </div>
-                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId,user.userId, user)"
+                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId, user.userId, user)"
                     class="join-btn">加入游戏</button>
                   <div v-else class="full-badge">房间已满</div>
                 </div>
@@ -87,7 +87,7 @@ export default {
     const rooms = ref([]);
     const user = ref(null);
     const currentUserId = ref(null);
-    
+
     const fetchRooms = async () => {
       try {
         console.log('Fetching rooms list...');
@@ -127,27 +127,27 @@ export default {
       fetchRooms();
     };
 
-    const goToSettings = () => {
-      router.push('/settings');
+    const goToProfile = () => {
+      router.push('/profile');
     };
 
-    const joinRoom = async (roomId,userId,user) => {
+    const joinRoom = async (roomId, userId, user) => {
       try {
         console.log('Joining room with ID:', roomId);
         console.log('User info:', user);
         const player = {
-                    Username: user.username, 
-                    // UserId: user.id,
-                    // GameRoom:null,
-                    Score: 0,
-                    Status: 1, 
-                    // IsHost: false,
-                    // HasDrawn: false,
-                    // LeftAt: null,
-                    // LastDrawingTime: null,
-                    // HasGuessed: false,
-                    JoinedAt: new Date().toISOString()
-                };
+          Username: user.username,
+          // UserId: user.id,
+          // GameRoom:null,
+          Score: 0,
+          Status: 1,
+          // IsHost: false,
+          // HasDrawn: false,
+          // LeftAt: null,
+          // LastDrawingTime: null,
+          // HasGuessed: false,
+          JoinedAt: new Date().toISOString()
+        };
         await store.dispatch('gameRoom/joinRoom', { roomId, userId, player: player });
         router.push(`/room/join/${roomId}`);
       } catch (error) {
@@ -190,7 +190,7 @@ export default {
       user,
       createRoom,
       refreshRooms,
-      goToSettings,
+      goToProfile,
       joinRoom,
       editNickname
     };
@@ -297,7 +297,7 @@ export default {
   height: 36px;
   border-radius: 50%;
   background: var(--primary);
-  color: white;
+  color: var(--primary-dark);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -329,7 +329,7 @@ export default {
 
 .edit-nick-btn:hover {
   background: var(--primary);
-  color: white;
+  color: black;
   transform: scale(1.05);
 }
 
@@ -381,7 +381,7 @@ export default {
   border: 1px solid var(--gray-light);
 }
 
-.action-card.settings {
+.action-card.profile {
   background: var(--primary-lightest);
   color: var(--primary-dark);
 }
@@ -595,7 +595,7 @@ export default {
 .join-btn {
   margin-top: 10px;
   background: var(--primary);
-  color: white;
+  color: black;
   border: none;
   padding: 12px;
   border-radius: 8px;
@@ -606,16 +606,18 @@ export default {
 
 .join-btn:hover {
   background: var(--primary-dark);
+  color: white;
   transform: translateY(-2px);
 }
 
 .full-badge {
   margin-top: 10px;
-  background: var(--gray-light);
-  color: var(--gray);
+  background: var(--primary);
+  color: black;
   text-align: center;
   padding: 12px;
   border-radius: 8px;
+  font-size: small;
   font-weight: 500;
 }
 

@@ -3,8 +3,8 @@
     <div class="profile-container">
       <!-- Header -->
       <header class="profile-header">
-        <div class="logo-container">
-          <div class="logo-icon"></div>
+        <div class="header-content">
+          <div class="logo-icon">👤</div>
           <h1>个人中心</h1>
         </div>
         <div class="user-info">
@@ -15,10 +15,13 @@
 
       <!-- Main Content Area -->
       <div class="main-content">
-        <!-- Personal Info Section -->
+        <!-- 个人信息 -->
         <section class="info-section">
           <div class="section-header">
-            <h2>个人信息</h2>
+            <div class="section-title">
+              <div class="section-icon">📋</div>
+              <h2>个人信息</h2>
+            </div>
           </div>
           <div class="section-content info-grid">
             <div class="info-item">
@@ -36,51 +39,32 @@
           </div>
         </section>
 
-        <!-- Game Stats Section -->
+        <!-- 游戏统计 -->
         <section class="stats-section">
           <div class="section-header">
-            <h2>游戏统计</h2>
+            <div class="section-title">
+              <div class="section-icon">📊</div>
+              <h2>游戏统计</h2>
+            </div>
           </div>
-           <div class="section-content stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon">🎮</div>
-              <!-- 修改为横向布局 -->
+          <div class="section-content stats-grid">
+            <div class="stat-card" v-for="(value, key) in statsMap" :key="key">
+              <div class="stat-icon">{{ value.icon }}</div>
               <div class="stat-info">
-                <span class="stat-label">总游戏数：</span>
-                <span class="stat-value">{{ stats.totalGames }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">🏆</div>
-              <!-- 修改为横向布局 -->
-              <div class="stat-info">
-                <span class="stat-label">胜利次数：</span>
-                <span class="stat-value">{{ stats.wins }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">⭐</div>
-              <!-- 修改为横向布局 -->
-              <div class="stat-info">
-                <span class="stat-label">总得分：</span>
-                <span class="stat-value">{{ stats.totalScore }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">📊</div>
-              <!-- 修改为横向布局 -->
-              <div class="stat-info">
-                <span class="stat-label">排名：</span>
-                <span class="stat-value">{{ stats.rank }}</span>
+                <span class="stat-label">{{ value.label }}</span>
+                <span class="stat-value">{{ value.value }}</span>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- Recent Games Section -->
+        <!-- 最近游戏 -->
         <section class="history-section">
           <div class="section-header">
-            <h2>最近游戏记录</h2>
+            <div class="section-title">
+              <div class="section-icon">🎮</div>
+              <h2>最近游戏记录</h2>
+            </div>
             <span class="games-count">{{ recentGames.length }} 场游戏</span>
           </div>
           <div class="section-content">
@@ -114,21 +98,18 @@
         </section>
       </div>
 
-      <!-- Footer Actions -->
+      <!-- Footer -->
       <footer class="profile-actions">
-        <button @click="logout" class="action-btn logout">
-          退出登录
-        </button>
+        <button @click="goToLobby" class="action-btn lobby">返回大厅</button>
+        <button @click="logout" class="action-btn logout">退出登录</button>
       </footer>
     </div>
   </div>
 </template>
 
-
 <script>
-import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
-import apiService from '@/services/apiService';
+
 export default {
   name: 'Profile',
   data() {
@@ -139,53 +120,67 @@ export default {
       currentUserId: null
     }
   },
+  computed: {
+    statsMap() {
+      return {
+        totalGames: { icon: '🎮', label: '总游戏数：', value: this.stats.totalGames },
+        wins: { icon: '🏆', label: '胜利次数：', value: this.stats.wins },
+        totalScore: { icon: '⭐', label: '总得分：', value: this.stats.totalScore },
+        rank: { icon: '📊', label: '排名：', value: this.stats.rank }
+      };
+    }
+  },
   async created() {
     const userIdString = localStorage.getItem('userId');
     if (userIdString) {
       this.currentUserId = parseInt(userIdString);
     }
-    await Promise.all([this.fetchUser(this.currentUserId), this.fetchStats(), this.fetchRecent()])
+    await Promise.all([
+      this.fetchUser(this.currentUserId),
+      this.fetchStats(),
+      this.fetchRecent()
+    ]);
   },
-
   methods: {
     async fetchUser(userId) {
-    try {
-        console.log("fetchUser");
-        const res = await fetch(`/api/users/profile?userId=${userId}`)
-        if (!res.ok) throw new Error()
-        this.user = await res.json()
+      try {
+        const res = await fetch(`/api/users/profile?userId=${userId}`);
+        if (!res.ok) throw new Error();
+        this.user = await res.json();
       } catch (e) {
-        console.error(e)
-        this.$toast?.error('获取用户信息失败')
+        console.error(e);
+        this.$toast?.error('获取用户信息失败');
       }
     },
     async fetchStats() {
       try {
-        const res = await fetch('/api/users/stats')
-        if (!res.ok) throw new Error()
-        this.stats = await res.json()
+        const res = await fetch('/api/users/stats');
+        if (!res.ok) throw new Error();
+        this.stats = await res.json();
       } catch (e) {
-        console.error(e)
-        this.$toast?.error('获取统计信息失败')
+        console.error(e);
+        this.$toast?.error('获取统计信息失败');
       }
     },
     async fetchRecent() {
       try {
-        const res = await fetch('/api/users/games')
-        if (!res.ok) throw new Error()
-        this.recentGames = await res.json()
+        const res = await fetch('/api/users/games');
+        if (!res.ok) throw new Error();
+        this.recentGames = await res.json();
       } catch (e) {
-        console.error(e)
-        this.$toast?.error('获取游戏记录失败')
+        console.error(e);
+        this.$toast?.error('获取游戏记录失败');
       }
     },
     formatDate(date) {
-      return new Date(date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+      return new Date(date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
     },
     logout() {
       const router = useRouter();
-      // 使用 this.$store 调用 dispatch 方法
       this.$store.dispatch('user/logout', router);
+    },
+    goToLobby() {
+      this.$router.push('/lobby');
     }
   }
 }
@@ -209,81 +204,77 @@ export default {
   --danger: #EF4444;
 }
 
-/* Base and Layout Styles */
 .profile-background {
-  background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
+  background: linear-gradient(135deg, var(--light) 0%, var(--primary-lightest) 100%);
   min-height: 100vh;
+  height: 100vh;
   width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: var(--dark);
-  padding: 20px 0;
-  overflow: hidden;
+  padding: 24px;
+  box-sizing: border-box;
 }
 
-
 .profile-container {
-  width: 90%;
+  width: 100%;
   max-width: 1200px;
+  height: 100%;
+  max-height: calc(100vh - 48px);
   background: white;
   border-radius: 24px;
   box-shadow: 0 10px 30px rgba(79, 70, 229, 0.1);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 90vh;
-  max-height: 800px;
+  overflow: hidden;
 }
 
-/* Header Styles */
 .profile-header {
+  background: var(--primary);
   padding: 20px 32px;
-  background: white;
-  border-bottom: 1px solid var(--gray-light);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  color: white;
+  flex-shrink: 0;
 }
 
-.logo-container {
+.header-content {
   display: flex;
   align-items: center;
+}
+
+.header-content h1 {
+  color: var(--primary-dark);
 }
 
 .logo-icon {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  margin-right: 12px;
-  position: relative;
-}
-
-.logo-icon::before {
-  content: "👤";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  margin-right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 20px;
 }
 
 .profile-header h1 {
-  font-size: 1.75rem;
+  font-size: 24px;
   font-weight: 600;
-  color: var(--primary);
   margin: 0;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  background: var(--primary-lightest);
+  background: rgba(255, 255, 255, 0.15);
   padding: 8px 16px;
   border-radius: 50px;
-  box-shadow: 0 2px 10px rgba(79, 70, 229, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .avatar {
@@ -291,7 +282,7 @@ export default {
   height: 36px;
   border-radius: 50%;
   background: var(--primary);
-  color: white;
+  color: var(--primary-dark);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -302,21 +293,286 @@ export default {
 
 .username {
   font-weight: 500;
-  color: var(--primary-dark);
+  color: #4338CA;
 }
 
-
-
-/* Main Content Layout */
 .main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  padding: 24px;
   gap: 24px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--primary-light) var(--gray-light);
+}
+
+/* Section styles */
+.info-section,
+.stats-section,
+.history-section {
+  background: var(--light);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.section-header {
+  padding: 20px 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+}
+
+.section-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--primary-lightest);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-right: 12px;
+}
+
+.section-title h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  margin: 0;
+}
+
+.games-count {
+  font-size: 14px;
+  color: var(--gray);
+  background: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--gray-light);
+}
+
+.section-content {
+  padding: 24px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.info-item {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--gray-light);
+  transition: all 0.2s ease;
+}
+
+.info-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-light);
+}
+
+.info-label {
+  width: 80px;
+  color: var(--gray);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.info-value {
+  font-weight: 600;
+  color: var(--primary);
+  flex: 1;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid var(--gray-light);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary);
+}
+
+.stat-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-label {
+  color: var(--gray);
+  font-size: 14px;
+}
+
+.stat-value {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.no-history {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--gray);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.history-item+.history-item {
+  margin-top: 16px;
+}
+
+.history-card {
+  padding: 20px;
+  border: 1px solid var(--gray-light);
+  border-radius: 12px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.history-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-light);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.game-date {
+  font-size: 14px;
+  color: var(--gray);
+}
+
+.game-result {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--gray-light);
+  color: var(--gray);
+}
+
+.game-result.win {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--success);
+}
+
+.history-details {
+  display: flex;
+  gap: 24px;
+}
+
+.detail-item {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.detail-label {
+  color: var(--gray);
+}
+
+.detail-value {
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.profile-actions {
+  padding: 24px 32px;
+  border-top: 1px solid var(--gray-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--light);
+  flex-shrink: 0;
+
+}
+
+.action-btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+}
+
+.logout {
+  background: var(--danger);
+  color: var(--warning);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.logout:hover {
+  background: #DC2626;
+  color: white;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
+.lobby {
+  background: var(--primary);
+  color: var(--primary-light);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+.lobby:hover {
+  background: var(--primary-dark);
+  color: white;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
 }
 
 /* Custom scrollbar styles */
@@ -338,294 +594,65 @@ export default {
   background: var(--primary);
 }
 
-/* Section Styles */
-.info-section,
-.stats-section,
-.history-section {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  overflow: auto;
-}
-
-.section-header {
-  padding: 10px 16px;
-  border-bottom: none;
-  display: flex;
-  align-items: center;
-   min-width: 150px;
-}
-
-.section-header h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--dark);
-  margin: 0;
-}
-
-.games-count {
-  background: var(--primary-lightest);
-  color: var(--primary);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 4px 12px;
-  border-radius: 50px;
-}
-
-.section-content {
-  padding: 20px;
-  flex: 1;
-}
-
-/* Info Grid Styles */
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
-  
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  background: var(--primary-lightest);
-  padding: 16px;
-  border-radius: 12px;
-  
-}
-
-.info-label {
-  font-size: 1.1rem;
-  color: var(--gray);
-  margin-bottom: 8px;
-  width: 80px; /* 设置标签宽度，确保对齐 */
-  /* text-align: left; */
-}
-
-.info-value {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--primary-dark);
-}
-
-/* Stats Grid Styles */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.stat-card {
-  background: white;
-  border: 1px solid var(--gray-light);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-  border-color: var(--primary-light);
-}
-
-.stat-icon {
-  font-size: 2rem;
-  margin-bottom: 12px;
-  height: 16px;
-  width: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: var(--primary-lightest);
-}
-
-.stat-info {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-value {
-  font-size: 1.2rem;
-  font-weight: 500;
-  color: var(--primary);
-  margin-bottom: 2px;
-}
-
-.stat-label {
-  font-size: 0.9rem;
-  color: var(--gray);
-}
-
-
-/* History Styles */
-.no-history {
-  height: 180px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--gray);
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.history-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-}
-
-.history-item {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
-  border: 1px solid var(--gray-light);
-}
-
-.history-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.15);
-  border-color: var(--primary-light);
-}
-
-.history-card {
-  padding: 16px;
-}
-
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.game-date {
-  font-size: 0.9rem;
-  color: var(--gray);
-}
-
-.game-result {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--danger);
-  background: rgba(239, 68, 68, 0.1);
-  padding: 4px 12px;
-  border-radius: 50px;
-}
-
-.game-result.win {
-  color: var(--success);
-  background: rgba(34, 197, 94, 0.1);
-}
-
-.history-details {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px dashed var(--gray-light);
-}
-
-.detail-item:last-child {
-  border-bottom: none;
-}
-
-.detail-label {
-  color: var(--gray);
-  font-size: 0.9rem;
-}
-
-.detail-value {
-  font-weight: 500;
-  color: var(--dark);
-}
-
-/* Action Buttons */
-.profile-actions {
-  padding: 20px 32px;
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  background: white;
-  border-top: 1px solid var(--gray-light);
-}
-
-.action-btn {
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.action-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.logout {
-  background-color: var(--danger);
-  color: black;
-  padding: 12px 24px;
-}
-
-.logout:hover {
-  background-color: #dc3545; /* 鼠标悬停时颜色加深 */
-}
-
-/* Responsive Adjustments */
+/* Responsive Design */
 @media (max-width: 992px) {
+  .main-content {
+    padding: 24px;
+  }
 
-  .info-grid,
-  .stats-grid,
-  .history-list {
+  .info-grid {
     grid-template-columns: 1fr;
   }
 
-  .profile-container {
-    height: auto;
-    max-height: none;
-    min-height: 90vh;
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
+  .profile-background {
+    padding: 12px;
+  }
+
   .profile-container {
-    width: 95%;
+    max-height: calc(100vh - 24px);
   }
 
   .profile-header {
+    padding: 16px 20px;
     flex-direction: column;
     gap: 16px;
+    align-items: flex-start;
+  }
+
+  .main-content {
+    padding: 20px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
 
   .profile-actions {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .history-details {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 }
 </style>
