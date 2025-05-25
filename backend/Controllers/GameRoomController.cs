@@ -106,7 +106,12 @@ namespace backend.Controllers
                 return BadRequest(new { success = false, message = "加入房间失败" }); // 添加 success 字段
             }
         }
-
+            catch (Exception ex)
+            {
+                Console.WriteLine($"加入房间时发生异常: {ex.Message}");
+                return StatusCode(500, new { success = false, message = "服务器错误" }); // 添加 success 字段
+            }
+        }
         // ... 其他 Action 方法 (根据需要调整路由或返回结构) ...
 
         // 获取房间详情
