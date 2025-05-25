@@ -125,7 +125,7 @@ namespace backend.Services
         /// <param name="roomId">房间 ID</param>
         /// <param name="player">要加入房间的玩家</param>
         /// <returns>加入成功返回 true，否则返回 false</returns>
-        public async Task<bool> JoinRoomAsync(string roomId, Player player)
+        public async Task<bool> JoinRoomAsync(string roomId, string userId, Player player)
         {
             var gameRoom = await GetRoomDetailsByRoomIdStringAsync(roomId);
             if (gameRoom == null)
@@ -138,12 +138,28 @@ namespace backend.Services
                 return false;
             }
 
-            if (gameRoom.Players.Any(p => p.Id == player.Id))
+            // 确保不是重复加入
+            if (gameRoom.Players.Any(p => p.UserId.ToString() == userId))
             {
                 return false;
             }
 
+            // 加载用户
+            var user = await _context.Users.FindAsync(int.Parse(userId));
+            if (user == null)
+            {
+                return false; // 用户不存在
+            }
+
+            // 设置 Player 的用户属性和房间属性
+            player.User = user;
+            player.UserId = user.Id;
+            player.GameRoomId = gameRoom.RoomId;
+            player.JoinedAt = DateTime.UtcNow;
+
+            // 添加到房间的玩家列表
             gameRoom.Players.Add(player);
+
             await _context.SaveChangesAsync();
             return true;
         }

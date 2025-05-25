@@ -124,12 +124,15 @@ const apiService = {
   },
 
     // 添加 joinRoom 函数
-  async joinRoom(roomId, player) {
+  async joinRoom(roomId, userId, player) {
     console.log('Attempting to join room with ID:', roomId);
     try {
       console.log('Player data:', player);
 
-      const response = await axios.post(`${API_BASE_URL}/rooms/join/${roomId}`, player);
+      const response = await axios.post(
+        `${API_BASE_URL}/rooms/join/${roomId}?userId=${userId}`,
+        player // 作为 body 发送
+      );
       console.error('Validation errors:', error.response.data.errors);
       // const response = await axios.post(`${API_BASE_URL}/rooms/join/${roomId}`);
       console.log('Backend response (joinRoom):', response.data);

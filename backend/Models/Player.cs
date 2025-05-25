@@ -17,18 +17,18 @@ namespace backend.Models
         public string Username { get; set; }
 
         // **新增：关联到 User 实体的外键**
-        public int UserId { get; set; }
+        public int? UserId { get; set; }
 
         // **新增：导航属性到 User 实体**
         [ForeignKey("UserId")]
-        public virtual User User { get; set; }
+        public virtual User? User { get; set; }
 
         // 玩家所属的游戏房间Id
-        public string GameRoomId { get; set; }
+        public string? GameRoomId { get; set; }
 
         // 玩家所属的房间
         [ForeignKey("GameRoomId")]
-        public GameRoom GameRoom { get; set; }
+        public GameRoom? GameRoom { get; set; }
 
         // 玩家当前的分数
         public int Score { get; set; }

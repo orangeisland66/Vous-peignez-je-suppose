@@ -129,13 +129,12 @@ const actions = {
     }
   },
   // 加入房间
-  // 加入房间
-  async joinRoom({commit}, { roomId, player })
+  async joinRoom({commit}, { roomId, userId, player })
   {
     try
     {
       // 这里需要调用API来加入房间
-      const response = await apiService.joinRoom(roomId, player)
+      const response = await apiService.joinRoom(roomId, userId, player)
 
       commit('SET_CURRENT_ROOM', response.data)
       commit('ADD_PLAYER', player) // 添加玩家到玩家列表

@@ -61,7 +61,7 @@
                     </div>
                     <div class="capacity-text">人数:{{ room.players.length }}/{{ room.maxPlayers }}</div>
                   </div>
-                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId, user)"
+                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId,user.userId, user)"
                     class="join-btn">加入游戏</button>
                   <div v-else class="full-badge">房间已满</div>
                 </div>
@@ -131,27 +131,24 @@ export default {
       router.push('/settings');
     };
 
-    const joinRoom = async (roomId, user) => {
+    const joinRoom = async (roomId,userId,user) => {
       try {
         console.log('Joining room with ID:', roomId);
         console.log('User info:', user);
         const player = {
-                    IsHost: false,
                     Username: user.username, 
-                    UserId: user.userId, 
-                    GameRoomId: roomId, 
-                    GameRoom:null,
-                    User:user,
+                    // UserId: user.id,
+                    // GameRoom:null,
                     Score: 0,
                     Status: 1, 
-                    IsHost: false,
-                    HasDrawn: false,
-                    LeftAt: null,
-                    LastDrawingTime: null,
-                    HasGuessed: false,
+                    // IsHost: false,
+                    // HasDrawn: false,
+                    // LeftAt: null,
+                    // LastDrawingTime: null,
+                    // HasGuessed: false,
                     JoinedAt: new Date().toISOString()
                 };
-        await store.dispatch('gameRoom/joinRoom', { roomId, player: player });
+        await store.dispatch('gameRoom/joinRoom', { roomId, userId, player: player });
         router.push(`/room/join/${roomId}`);
       } catch (error) {
         console.error('Failed to join room:', error);
