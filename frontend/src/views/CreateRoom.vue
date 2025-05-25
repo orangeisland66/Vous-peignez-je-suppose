@@ -279,7 +279,7 @@ export default {
 
            // **5. 导航到新创建的房间页面**
            // 使用获取到的房间ID进行跳转
-        this.$router.push(`/room/${res.roomId}/waiting`);
+        this.$router.push(`/room/join/${res.roomId}`);
 
         } else {
            // 处理后端返回的创建失败信息 (如果后端提供了)

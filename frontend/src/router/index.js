@@ -53,7 +53,7 @@ const routes = [
     // meta: { requiresAuth: true },
     // beforeEnter:checkUserAuth 
   },
-  // 等待游戏开始页面
+  //等待游戏开始页面
   { 
     path: '/room/join/:roomId', // <--- 确保这里的参数名是 'roomId'
     name: 'WaitingRoom',
@@ -61,6 +61,13 @@ const routes = [
     // meta: { requiresAuth: true } ,// 如果需要登录
     // beforeEnter:checkRoomPermission
   },
+  // { 
+  //   path: '/room/:roomId/waiting', // <--- 确保这里的参数名是 'roomId'
+  //   name: 'WaitingRoom',
+  //   component: () => import('../views/WaitingRoom.vue'), // 确保路径正确
+  //   // meta: { requiresAuth: true } ,// 如果需要登录
+  //   // beforeEnter:checkRoomPermission
+  // },
   // 进入游戏页面
   { 
     path: '/room/:roomId/game', 
