@@ -4,13 +4,15 @@ using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using backend.Models; // 确保 GameRoom 模型在这里
-using backend.Services; // 确保 GameRoomService 在这里
+using backend.Services;
+using System.Runtime.InteropServices; // 确保 GameRoomService 在这里
 
 namespace backend.Controllers
 {
     // **修改控制器级别的路由**
     // 将 [Route("api/[controller]")] 改为 [Route("rooms")]
-    [Route("rooms")] // <-- 修改这里
+    [Route("rooms")]
+    // [Route("rooms")] // <-- 修改这里
     [ApiController]
     public class GameRoomController : ControllerBase
     {
@@ -33,40 +35,51 @@ namespace backend.Controllers
         // 创建一个新的游戏房间
         // 完整路由: POST /rooms/create
         [HttpPost("create")]
-        public async Task<IActionResult> CreateRoom([FromBody] GameRoom newRoom)
+        public async Task<IActionResult> CreateRoom([FromBody] GameRoom newRoom) 
         {
-            // ... (代码保持不变) ...
-             if (newRoom == null || string.IsNullOrEmpty(newRoom.Name))
+            if (newRoom == null || string.IsNullOrEmpty(newRoom.Name))
             {
-                // 返回 BadRequest，并包含前端期望的 message 字段
                 return BadRequest(new { success = false, message = "房间信息不完整" });
             }
 
-            var result = await _gameRoomService.CreateRoomAsync(newRoom);
-            if (result != null)
+            // newRoom.CreatorId 应该已经被模型绑定填充了
+            // 注意：newRoom.Players 和 ChatHistory 会是 null 或空，因为前端没有发送它们
+            // GameRoom 的构造函数会初始化它们为空列表
+
+            var createdRoomInDb = await _gameRoomService.CreateRoomAsync(newRoom); // 将 newRoom 传递给服务层
+            if (createdRoomInDb != null)
             {
-                // 返回 Ok，并包含前端期望的 success 和 roomId 字段
-                return Ok(new { success = true, roomId = result.Id, message = "房间创建成功" }); // 添加 success 字段
+                return Ok(new
+                {
+                    success = true,
+                    dbId = createdRoomInDb.Id, // 数据库的 int Id
+                    roomId = createdRoomInDb.RoomId, // 前端生成的8位字符串 RoomId
+                    message = "房间创建成功"
+                });
             }
             else
             {
-                 // 返回 BadRequest，并包含前端期望的 success 和 message 字段
-                return BadRequest(new { success = false, message = "房间创建失败" }); // 添加 success 字段
+                return BadRequest(new { success = false, message = "房间创建失败" });
             }
         }
 
         // 加入一个已有的游戏房间
         // 完整路由: POST /rooms/join/{roomId}
         [HttpPost("join/{roomId}")]
-        public async Task<IActionResult> JoinRoom(int roomId, [FromBody] Player player)
+       public async Task<IActionResult> JoinRoom(
+        [FromRoute] string roomId,
+        [FromQuery] string userId,
+        [FromBody] Player player)
         {
+            Console.WriteLine($"接收到加入房间的请求，房间 ID: {roomId}, 玩家: {player?.Username}");
             // ... (代码保持不变) ...
             if (player == null || string.IsNullOrEmpty(player.Username))
             {
-                 return BadRequest(new { success = false, message = "玩家信息不完整" });
+                return BadRequest(new { success = false, message = "玩家信息不完整" });
             }
 
-            var result = await _gameRoomService.JoinRoomAsync(roomId, player);
+            var result = await _gameRoomService.JoinRoomAsync(roomId,userId, player);
+            Console.WriteLine($"加入房间结果: {result}");
             if (result)
             {
                 return Ok(new { success = true, message = "成功加入房间", roomId = roomId }); // 添加 success 字段
@@ -90,6 +103,49 @@ namespace backend.Controllers
                 return NotFound(new { success = false, message = "房间不存在" }); // 添加 success 字段
             }
             return Ok(new { success = true, room = room }); // 添加 success 字段，并返回房间对象
+        }
+
+        // 新增的通过字符串 RoomId 获取房间详情的 API 端点
+        // 完整路由: GET /api/rooms/details/by-string-id/{roomIdString}
+        [HttpGet("details/by-string-id/{roomIdString}")]
+        public async Task<IActionResult> GetRoomDetailsByStringId(string roomIdString)
+        {
+            Console.WriteLine($"接收到获取房间详情的请求，房间 ID 字符串: {roomIdString}");
+            var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomIdString);
+            if (room == null)
+            {
+                return NotFound(new { success = false, message = "房间不存在 (ID: " + roomIdString + ")" });
+            }
+            return Ok(new { success = true, room = room });
+        }
+
+                // 新增的 API 端点，用于处理玩家离开或房主解散房间
+        // 完整路由: DELETE /rooms/exit/{roomIdString}/{userId}
+        [HttpDelete("exit/{roomIdString}/{userId}")]
+        public async Task<IActionResult> ExitRoom(string roomIdString, int userId)
+        {
+            if (string.IsNullOrWhiteSpace(roomIdString))
+            {
+                return BadRequest(new { success = false, message = "房间ID不能为空。" });
+            }
+            if (userId <= 0)
+            {
+                return BadRequest(new { success = false, message = "无效的用户ID。" });
+            }
+
+            var result = await _gameRoomService.HandlePlayerLeavingAsync(roomIdString, userId);
+
+            if (!result.Success)
+            {
+                // 根据具体错误消息决定返回的状态码
+                if (result.Message?.Contains("不存在") == true) // 简单判断
+                {
+                    return NotFound(new { success = false, message = result.Message, roomDisbanded = result.RoomDisbanded });
+                }
+                return BadRequest(new { success = false, message = result.Message, roomDisbanded = result.RoomDisbanded });
+            }
+
+            return Ok(new { success = true, message = result.Message, roomDisbanded = result.RoomDisbanded });
         }
 
          // 开始游戏

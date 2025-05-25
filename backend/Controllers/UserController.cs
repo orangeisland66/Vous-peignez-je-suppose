@@ -67,7 +67,7 @@ namespace backend.Controllers
             {
                 // 这里应该生成JWT token
                 //var token = GenerateJwtToken(user);
-                return Ok(new { Message = "登录成功", UserId = user.Id });
+                return Ok(new { Message = "登录成功", userId = user.Id, userName=user.Username });
             }
             else
             {
@@ -75,7 +75,7 @@ namespace backend.Controllers
             }
         }
 
-        [HttpGet("profile")] // 完整的路由是 /api/User/profile
+        [HttpGet("profile")] // 完整的路由是 /api/users/profile
         // [Authorize] // 通常需要认证才能获取自己的资料
         public async Task<IActionResult> GetUserProfile(int userId)
         {

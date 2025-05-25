@@ -20,27 +20,32 @@ namespace backend.Hubs
         }
 
         // 玩家加入房间
-        public async Task JoinRoom(int roomId, Player player)
+        public async Task JoinRoom(string roomId)
         {
-            var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
-            if (room == null)
-            {
-                await Clients.Caller.SendAsync("RoomNotFound", "房间不存在");
-                return;
-            }
+            Console.WriteLine($"接收到加入房间的请求，房间 ID: {roomId}");
 
-            var result = await _gameRoomService.JoinRoomAsync(roomId, player);
-            if (result)
-            {
-                await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
-                _connectionPlayerMap[Context.ConnectionId] = player.Id;
-                await Clients.Group(roomId.ToString()).SendAsync("PlayerJoined", player.Username);
-                await Clients.Caller.SendAsync("JoinedRoom", roomId);
-            }
-            else
-            {
-                await Clients.Caller.SendAsync("JoinRoomFailed", "加入房间失败");
-            }
+            // var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomId);
+            // if (room == null)
+            // {
+            //     Console.WriteLine($"房间 {roomId} 不存在");
+            //     await Clients.Caller.SendAsync("RoomNotFound", "房间不存在");
+            //     return;
+            // }
+
+            // var result = await _gameRoomService.JoinRoomAsync(roomId, player);
+            // if (result)
+            // {
+            //     Console.WriteLine($"玩家 {player.Username} 加入房间 {roomId}");
+            //     await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
+            //     _connectionPlayerMap[Context.ConnectionId] = player.Id;
+            //     await Clients.Group(roomId.ToString()).SendAsync("PlayerJoined", player.Username);
+            //     await Clients.Caller.SendAsync("JoinedRoom", roomId);
+            // }
+            // else
+            // {
+            //     Console.WriteLine($"玩家 {player.Username} 加入房间 {roomId} 失败");
+            //     await Clients.Caller.SendAsync("JoinRoomFailed", "加入房间失败");
+            // }
         }
 
         //玩家退出登录

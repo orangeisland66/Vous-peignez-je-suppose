@@ -61,7 +61,7 @@
                     </div>
                     <div class="capacity-text">人数:{{ room.players.length }}/{{ room.maxPlayers }}</div>
                   </div>
-                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.id)"
+                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId,user.userId, user)"
                     class="join-btn">加入游戏</button>
                   <div v-else class="full-badge">房间已满</div>
                 </div>
@@ -75,56 +75,127 @@
 </template>
 
 <script>
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useStore } from 'vuex';
+
 export default {
   name: 'Lobby',
-  data() {
+  setup() {
+    const router = useRouter();
+    const store = useStore();
+    const rooms = ref([]);
+    const user = ref(null);
+    const currentUserId = ref(null);
+    
+    const fetchRooms = async () => {
+      try {
+        console.log('Fetching rooms list...');
+        const res = await fetch('/api/rooms/list');
+        if (!res.ok) throw new Error('获取房间列表失败');
+        rooms.value = await res.json();
+      } catch (e) {
+        console.error(e);
+        this.$toast?.error('获取房间列表失败');
+      }
+    };
+
+    const fetchUserInfo = async (userId) => {
+      try {
+        console.log('Fetching user info for userId:', userId);
+        const res = await fetch(`/api/users/profile?userId=${userId}`);
+        console.log('Fetching user info from URL:', `/api/users/profile?userId=${userId}`);
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`获取用户信息失败: 状态码 ${res.status}, 响应: ${errorText}`);
+        }
+        user.value = await res.json();
+        console.log('User info fetched:', user.value);
+      } catch (e) {
+        console.error('获取用户信息失败:', e);
+        user.value = null;
+        this.$toast?.error(e.message || '获取用户信息失败');
+      }
+    };
+
+    const createRoom = () => {
+      router.push('/room/create');
+    };
+
+    const refreshRooms = () => {
+      fetchRooms();
+    };
+
+    const goToSettings = () => {
+      router.push('/settings');
+    };
+
+    const joinRoom = async (roomId,userId,user) => {
+      try {
+        console.log('Joining room with ID:', roomId);
+        console.log('User info:', user);
+        const player = {
+                    Username: user.username, 
+                    // UserId: user.id,
+                    // GameRoom:null,
+                    Score: 0,
+                    Status: 1, 
+                    // IsHost: false,
+                    // HasDrawn: false,
+                    // LeftAt: null,
+                    // LastDrawingTime: null,
+                    // HasGuessed: false,
+                    JoinedAt: new Date().toISOString()
+                };
+        await store.dispatch('gameRoom/joinRoom', { roomId, userId, player: player });
+        router.push(`/room/join/${roomId}`);
+      } catch (error) {
+        console.error('Failed to join room:', error);
+      }
+    };
+
+    const editNickname = () => {
+      router.push('/profile');
+    };
+
+    onMounted(async () => {
+      console.log('Lobby created hook called.');
+      const userIdString = localStorage.getItem('userId');
+      console.log('Lobby.vue - userIdString from local storage:', userIdString);
+
+      if (userIdString) {
+        currentUserId.value = parseInt(userIdString);
+        console.log('Lobby.vue - Parsed currentUserId:', currentUserId.value);
+
+        if (isNaN(currentUserId.value)) {
+          console.error('Lobby.vue - Parsed userId is NaN. Redirecting to login.');
+          this.$toast?.error('用户ID无效，请重新登录');
+          localStorage.removeItem('userId');
+          router.push('/login');
+          return;
+        }
+
+        await fetchUserInfo(currentUserId.value);
+        await fetchRooms();
+      } else {
+        console.error('Lobby.vue - userId not found in local storage. Redirecting to login.');
+        this.$toast?.error('未检测到登录用户，请重新登录');
+        router.push('/login');
+      }
+    });
+
     return {
-      rooms: [],
-      user: null
-    }
-  },
-  async created() {
-    await this.fetchUserInfo()
-    await this.fetchRooms()
-  },
-  methods: {
-    async fetchRooms() {
-      try {
-        const res = await fetch('/api/rooms/list')
-        if (!res.ok) throw new Error('获取房间列表失败')
-        this.rooms = await res.json()
-      } catch (e) {
-        console.error(e)
-        this.$toast?.error('获取房间列表失败')
-      }
-    },
-    async fetchUserInfo() {
-      try {
-        const res = await fetch('/api/user/profile')
-        if (!res.ok) throw new Error('获取用户信息失败')
-        this.user = await res.json()
-      } catch (e) {
-        console.error(e)
-        this.$toast?.error('获取用户信息失败')
-      }
-    },
-    createRoom() {
-      this.$router.push('/room/create')
-    },
-    refreshRooms() {
-      this.fetchRooms()
-    },
-    goToSettings() {
-      this.$router.push('/settings')
-    },
-    joinRoom(id) {
-      this.$router.push(`/room/${id}/waiting`)
-    },
-    editNickname() {
-      this.$router.push('/profile')
-    }
+      rooms,
+      user,
+      createRoom,
+      refreshRooms,
+      goToSettings,
+      joinRoom,
+      editNickname
+    };
   }
-}
+};
 </script>
 
 <style scoped>

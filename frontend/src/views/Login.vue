@@ -34,21 +34,6 @@
           <button type="submit" class="submit-btn">登录</button>
         </form>
 
-        <div class="social-login">
-          <p class="social-title">第三方登录</p>
-          <div class="social-buttons">
-            <button class="social-btn wechat">
-              <span class="social-icon">微信</span>
-            </button>
-            <button class="social-btn qq">
-              <span class="social-icon">QQ</span>
-            </button>
-            <button class="social-btn weibo">
-              <span class="social-icon">微博</span>
-            </button>
-          </div>
-        </div>
-
         <div v-if="error" class="error-message login-error">{{ error }}</div>
       </div>
     </div>
@@ -109,20 +94,42 @@ export default {
       };
         try { 
           const response = await apiService.login(credentials); 
-          if (response) {
-             const { token, userInfo } = response.data;
-          localStorage.setItem('token', token);
-          localStorage.setItem('userInfo', JSON.stringify(userInfo));
+          console.log('Login.vue - Full API Response:', response); // 打印完整的 Axios 响应
+          console.log('Login.vue - API Response Data:', response.data); // 打印后端返回的数据部分
+          //检查响应中是否包含userId
+          if (response && response.data && response.data.userId !== undefined) {
+          const userName = response.data.username ; // 获取用户名
+          const userId = response.data.userId; // 获取 userId
+          console.log('Login.vue - Extracted userId:', userId);//日志输出
+          // 将 userId 存储到 Local Storage**
+          // 这是 Lobby.vue 主要需要的信息
+          localStorage.setItem('userId', userId.toString()); // 确保存储为字符串
+          localStorage.setItem('userName', userName); // 存储用户名
+          localStorage.removeItem('userInfo');
+          // localStorage.setItem('token', token);
+          // localStorage.setItem('userInfo', JSON.stringify(userInfo));
           this.$router.push('/lobby');
         } else {
-          this.error = '登录失败，请稍后重试1';
-        }
+        // 登录API调用成功，但响应数据格式不符合预期 (例如没有 userId)
+          let errorMessage = '登录失败，服务器响应异常。';
+          if (response && response.data && (response.data.message || response.data.Message)) {
+              errorMessage = response.data.message || response.data.Message || errorMessage;
+          }
+          this.error = errorMessage;
+          console.error('Login.vue - Login successful but userId missing in response data:', response.data);
+      }
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-          this.error = '用户名或密码错误';
-        } else {
-          this.error = '登录失败，请稍后重试2';
-        }
+          console.error('Login.vue - Login API call error:', error);
+          if (error.response && error.response.status === 401) {
+            // 后端返回 Unauthorized (用户名或密码错误)
+            this.error = (error.response.data && (error.response.data.message || error.response.data.Message)) || '用户名或密码错误';
+          } else if (error.response && error.response.data && (error.response.data.message || error.response.data.Message)) {
+            // 其他后端错误，使用后端提供的消息
+            this.error = error.response.data.message || error.response.data.Message;
+          } else {
+            // 网络错误或其他未知错误
+            this.error = '登录失败，请检查网络或稍后重试。';
+          }
       }
     }
   }

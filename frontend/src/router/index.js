@@ -53,17 +53,24 @@ const routes = [
     // meta: { requiresAuth: true },
     // beforeEnter:checkUserAuth 
   },
-  // 等待游戏开始页面
+  //等待游戏开始页面
   { 
-    path: '/room/:id/waiting', 
-    name: 'WaitingRoom', 
-    component: WaitingRoom, 
-    // meta: { requiresAuth: true },
+    path: '/room/join/:roomId', // <--- 确保这里的参数名是 'roomId'
+    name: 'WaitingRoom',
+    component: WaitingRoom,
+    // meta: { requiresAuth: true } ,// 如果需要登录
     // beforeEnter:checkRoomPermission
   },
+  // { 
+  //   path: '/room/:roomId/waiting', // <--- 确保这里的参数名是 'roomId'
+  //   name: 'WaitingRoom',
+  //   component: () => import('../views/WaitingRoom.vue'), // 确保路径正确
+  //   // meta: { requiresAuth: true } ,// 如果需要登录
+  //   // beforeEnter:checkRoomPermission
+  // },
   // 进入游戏页面
   { 
-    path: '/room/:id/game', 
+    path: '/room/:roomId/game', 
     name: 'GameRoom', 
     component: GameRoom, 
     // meta: { requiresAuth: true }, 
@@ -71,7 +78,7 @@ const routes = [
   },
   // 单轮游戏结束页面
   { 
-    path: '/room/:id/round-result', 
+    path: '/room/:roomId/round-result', 
     name: 'RoundResult', 
     component: RoundResult, 
     // meta: { requiresAuth: true },
@@ -79,7 +86,7 @@ const routes = [
   },
   // 游戏结束，显示最终分数页面
   {
-    path: '/room/:id/final', 
+    path: '/room/:roomId/final', 
     name: 'FinalScore', 
     component: FinalScore, 
     meta: { requiresAuth: true },

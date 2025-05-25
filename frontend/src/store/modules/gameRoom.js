@@ -1,6 +1,7 @@
 // frontend/src/store/modules/gameRoom.js
 
 /* 该文件缺乏相关API接口的调用，待API完成后补充 */
+import apiService from '@/services/apiService';
 
 // state还在想，之后需要修改
 const state = {
@@ -44,7 +45,11 @@ const mutations =
   },
   ADD_PLAYER(state, player)
   {
-    state.players.push(player)
+    const existingPlayer = state.players.find(p => p.username === player.username);
+    console.log('existingPlayer:', existingPlayer)
+    if (!existingPlayer) {
+      state.players.push(player);
+    }
   },
   REMOVE_PLAYER(state, playerId)
   {
@@ -128,15 +133,17 @@ const actions = {
     }
   },
   // 加入房间
-  async joinRoom({commit}, roomId)
+  async joinRoom({commit}, { roomId, userId, player })
   {
     try
     {
-      //这里需要调用API来加入房间
-      // const response = await apiService.post('/rooms/${roomId}/join')
+      // 这里需要调用API来加入房间
+      const response = await apiService.joinRoom(roomId, userId, player)
 
       commit('SET_CURRENT_ROOM', response.data)
-      socketService.joinRoom(roomId)
+      commit('ADD_PLAYER', player) // 添加玩家到玩家列表
+
+      // socketService.joinRoom(roomId)
     }
     catch(error)
     {
