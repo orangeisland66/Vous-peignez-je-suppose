@@ -237,17 +237,59 @@ export default {
       // await apiService.startGame(this.room.roomId);
       this.$router.push(`/room/${this.room.roomId}/game`); // 使用字符串 roomId 进行路由
     },
+    // 修改 leaveRoom 方法
     async leaveRoom() {
-      console.log('WaitingRoom: 离开房间，返回大厅');
-      try {
-        // TODO: 调用后端API通知服务器用户离开房间
-        // 例如: await apiService.leaveRoom(this.room.roomId, this.currentUser.id);
-        // 清理本地状态或让后端处理
-      } catch (error) {
-        console.error("离开房间时出错:", error);
-        // 即使API调用失败，也允许用户返回大厅
+      console.log('[WaitingRoom] User clicked "返回大厅" button.');
+
+      if (!this.room || !this.currentUser || !this.currentUser.id) {
+        console.warn('[WaitingRoom] Room or currentUser data is missing. Redirecting to lobby.');
+        this.$router.push('/lobby');
+        return;
       }
-      this.$router.push('/lobby');
+
+      const roomIdString = this.room.roomId;
+      const userId = this.currentUser.id;
+
+      if (this.isCurrentUserHost) {
+        // 房主离开，弹出确认框
+        if (!confirm("您是房主，离开将会解散当前房间。确定要离开吗？")) {
+          console.log('[WaitingRoom] Host cancelled disband room operation.');
+          return; // 用户取消操作
+        }
+        console.log(`[WaitingRoom] Host (ID: ${userId}) confirmed to disband/exit room (ID: ${roomIdString}).`);
+      } else {
+        console.log(`[WaitingRoom] Player (ID: ${userId}) is leaving room (ID: ${roomIdString}).`);
+      }
+
+      try {
+        // 调用 apiService 中的 exitRoom 方法
+        const response = await apiService.exitRoom(roomIdString, userId);
+
+        if (response && response.success) {
+          console.log(`[WaitingRoom] Exit room operation successful: ${response.message}`);
+          if (response.roomDisbanded) {
+            alert('房间已成功解散。'); // 或者使用更美观的通知
+          } else {
+            alert('您已成功离开房间。'); // 或者使用更美观的通知
+          }
+        } else {
+          // API 调用成功返回，但业务逻辑上失败 (e.g., backend returns { success: false, message: "..." })
+          const failureMessage = response?.message || '操作失败，服务器返回未知错误。';
+          console.error(`[WaitingRoom] Failed to exit room ${roomIdString}: ${failureMessage}`);
+          alert(`操作失败: ${failureMessage}`);
+        }
+      } catch (error) {
+        // API 调用本身发生错误 (网络错误, HTTP 500, 后端抛出的未处理异常等)
+        // error 对象可能是后端直接抛出的 { success: false, message: "..." } (如果 apiService 这样处理了)
+        // 或者是一个更通用的 Error 对象
+        const errorMessage = error?.message || '无法连接到服务器或发生未知网络错误。';
+        console.error(`[WaitingRoom] Error calling exitRoom API for room ${roomIdString}:`, error);
+        alert(`操作失败: ${errorMessage}`);
+      } finally {
+        // 无论API调用结果如何，都将用户导航回大厅
+        console.log('[WaitingRoom] Navigating to /lobby.');
+        this.$router.push('/lobby');
+      }
     }
   }
 }

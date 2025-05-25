@@ -150,7 +150,41 @@ const apiService = {
         throw new Error(`加入房间失败：${error.message}`);
       }
     }
-}
+ },
+    // 新增 exitRoom 方法
+  /**
+   * 请求离开或解散房间
+   * @param {string} roomIdString - 房间的字符串ID
+   * @param {number} userId - 发起请求的用户ID
+   * @returns {Promise<object>} - 后端返回的响应 { success: boolean, message: string, roomDisbanded: boolean }
+   */
+  async exitRoom(roomIdString, userId) {
+    console.log(`[apiService] Attempting to exit room: ${roomIdString} for user: ${userId}`);
+    try {
+      // 调用新的后端 API，将 userId 作为路径参数传递
+      // 确保这里的 API_BASE_URL 和路径与你的后端 GameRoomController.cs 中的路由匹配
+      // 例如：DELETE /api/rooms/exit/{roomIdString}/{userId}
+      const response = await axios.delete(`${API_BASE_URL}/rooms/exit/${roomIdString}/${userId}`);
+      console.log('[apiService] Backend response (exitRoom):', response.data);
+      return response.data; // 期望后端返回 { success: boolean, message: string, roomDisbanded: boolean }
+    } catch (error) {
+      console.error(`[apiService] Error exiting room ${roomIdString} (user ID: ${userId}):`, error);
+      // 重新抛出错误，让调用方 (WaitingRoom.vue) 处理 UI 反馈
+      // 尝试从 error.response.data 中获取更具体的错误信息
+      if (error.response && error.response.data) {
+        throw error.response.data; // 抛出后端返回的错误对象
+      } else if (error.response) {
+        // 如果后端没有返回具体的 data 对象，但有 response
+        throw new Error(`操作失败：服务器响应状态 ${error.response.status}`);
+      } else if (error.request) {
+        // 请求已发出，但没有收到响应
+        throw new Error('操作失败：无法连接到服务器');
+      } else {
+        // 设置请求时发生了一些事情，触发了一个错误
+        throw new Error(`操作失败：${error.message}`);
+      }
+    }
+  },
 };
 
 export default apiService;

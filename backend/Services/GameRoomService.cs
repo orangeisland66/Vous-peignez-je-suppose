@@ -59,8 +59,8 @@ namespace backend.Services
                 Username = creator.Username,  // **从 User 对象获取用户名作为 Player 的初始用户名**
                 IsHost = true,                // 标记为房主
                 GameRoom = roomDataFromController, // **关联到当前创建的 GameRoom 对象**
-                                                // GameRoomId 会在 EF Core 保存时根据 GameRoom 导航属性自动设置
-                // 其他 Player 属性会使用 Player 构造函数中的默认值 (Score=0, Status=Waiting, etc.)
+                                                   // GameRoomId 会在 EF Core 保存时根据 GameRoom 导航属性自动设置
+                                                   // 其他 Player 属性会使用 Player 构造函数中的默认值 (Score=0, Status=Waiting, etc.)
             };
             // GameRoom 的构造函数应该已经初始化了 Players = new List<Player>();
             roomDataFromController.Players.Add(hostPlayer);
@@ -98,7 +98,7 @@ namespace backend.Services
                 .Include(gr => gr.Creator)      // 加载房间的创建者 (User)
                 .Include(gr => gr.Players)      // 加载房间内的所有玩家
                     .ThenInclude(p => p.User)   // 对于每个玩家，加载其关联的 User 信息
-                // .Include(gr => gr.ChatHistory) // 如果等待界面不需要聊天记录，可以暂时不加载以提高性能
+                                                // .Include(gr => gr.ChatHistory) // 如果等待界面不需要聊天记录，可以暂时不加载以提高性能
                 .FirstOrDefaultAsync(gr => gr.Id == roomId);
         }
 
@@ -110,7 +110,7 @@ namespace backend.Services
         /// <returns>找到的 GameRoom 对象，如果不存在则返回 null。</returns>
         public async Task<GameRoom?> GetRoomDetailsByRoomIdStringAsync(string roomIdString)
         {
-      
+
             return await _context.GameRooms
                 .Include(gr => gr.Creator)      // 加载房间的创建者 (User)
                 .Include(gr => gr.Players)      // 加载房间内的所有玩家
@@ -128,12 +128,12 @@ namespace backend.Services
         /// <returns>加入成功返回 true，否则返回 false</returns>
         public async Task<bool> JoinRoomAsync(string roomId, string userId, Player player)
         {
-            
+
             var gameRoom = await GetRoomDetailsByRoomIdStringAsync(roomId);
-                 
+
             if (gameRoom == null)
             {
-                  
+
                 return false;
             }
 
@@ -147,10 +147,10 @@ namespace backend.Services
             // {
             //     return false;
             // }
-            Console.WriteLine($"房间不存在");   
+            Console.WriteLine($"房间不存在");
             // 加载用户
             var user = await _context.Users.FindAsync(int.Parse(userId));
-         
+
             if (user == null)
             {
                 return false; // 用户不存在
@@ -166,8 +166,102 @@ namespace backend.Services
             gameRoom.Players.Add(player);
 
             await _context.SaveChangesAsync();
-             Console.WriteLine($"用户 {user.Username} 加入房间 {roomId}");
+            Console.WriteLine($"用户 {user.Username} 加入房间 {roomId}");
             return true;
+        }
+
+        /// <summary>
+        /// 处理玩家离开游戏房间的请求。
+        /// 如果是房主离开，则解散房间。
+        /// 如果是普通玩家离开，则将其从房间移除。
+        /// </summary>
+        /// <param name="roomIdString">房间的字符串ID (例如8位房间号)。</param>
+        /// <param name="requestingUserId">发起请求的用户的ID。</param>
+        /// <returns>一个包含操作结果的对象，指明操作是否成功以及房间是否被解散。</returns>
+        public async Task<LeaveRoomResult> HandlePlayerLeavingAsync(string roomIdString, int requestingUserId)
+        {
+            // 使用 GetRoomDetailsByRoomIdStringAsync 来加载房间，因为它会加载必要的关联数据
+            var room = await _context.GameRooms
+                .Include(gr => gr.Creator)      // 确保 Creator 被加载
+                .Include(gr => gr.Players)      // 加载房间内的所有玩家
+                    .ThenInclude(p => p.User)   // 对于每个玩家，加载其关联的 User 信息
+                .FirstOrDefaultAsync(gr => gr.RoomId == roomIdString);
+
+            if (room == null)
+            {
+                return new LeaveRoomResult { Success = false, Message = "房间不存在。" };
+            }
+
+            var playerLeavingRecord = room.Players.FirstOrDefault(p => p.UserId == requestingUserId);
+
+            if (playerLeavingRecord == null)
+            {
+                // 用户可能已经不在房间，或者数据有误。
+                // 这种情况可以认为操作“成功”（用户不在房间，等于已离开）或者返回特定错误。
+                // 为了简单起见，我们认为如果记录不存在，就不能执行“离开”操作。
+                return new LeaveRoomResult { Success = false, Message = "请求的用户不在该房间内。" };
+            }
+
+            // 判断是否为房主。优先使用 Player 记录中的 IsHost 标志。
+            // 确保在 CreateRoomAsync 中，房主的 Player.IsHost 被正确设置为 true。
+            bool isHostLeaving = playerLeavingRecord.IsHost;
+
+            //添加一个备用检查：
+            if (!isHostLeaving && room.CreatorId == requestingUserId)
+            {
+                isHostLeaving = true;
+            }
+
+            if (isHostLeaving)
+            {
+                // 房主离开，解散房间
+                // TODO: (可选) 通知房间内所有其他玩家房间已解散 (通过 WebSocket)
+                // var otherPlayerUserIds = room.Players
+                //                              .Where(p => p.UserId != requestingUserId)
+                //                              .Select(p => p.UserId)
+                //                              .ToList();
+                // if (otherPlayerUserIds.Any())
+                // {
+                //     // await _notificationService.NotifyRoomDisbanded(otherPlayerUserIds, room.RoomId);
+                // }
+
+                _context.GameRooms.Remove(room); // EF Core 会处理级联删除 Players (如果配置正确)
+                                                 // 如果没有配置级联删除，你可能需要手动删除 room.Players
+                await _context.SaveChangesAsync();
+                return new LeaveRoomResult { Success = true, Message = "房主离开，房间已解散。", RoomDisbanded = true };
+            }
+            else
+            {
+                // 普通玩家离开
+                _context.Players.Remove(playerLeavingRecord); // 从 Players DbSet 中移除该玩家记录
+
+                // TODO: (可选) 通知房间内其他玩家此人已离开 (通过 WebSocket)
+                // var otherPlayerUserIds = room.Players
+                //                              .Where(p => p.UserId != requestingUserId && p.Id != playerLeavingRecord.Id) // 排除刚离开的玩家
+                //                              .Select(p => p.UserId)
+                //                              .ToList();
+                // if (otherPlayerUserIds.Any())
+                // {
+                //    // await _notificationService.NotifyPlayerLeft(otherPlayerUserIds, room.RoomId, playerLeavingRecord.User?.Username ?? "一位玩家");
+                // }
+
+                // 检查移除该玩家后房间是否变空（例如，房主先离开了，这是最后一个玩家）
+                // 或者如果房间内只剩下房主，但房主不活跃等逻辑，可以根据业务需求添加
+                // 当前逻辑：如果移除后房间没有其他玩家了（除了可能存在的房主，但房主若离开应走上面逻辑）
+                // 注意：room.Players 集合在移除 playerLeavingRecord 后，在 SaveChangesAsync 之前可能还未更新。
+                // 更可靠的检查是查看数据库或基于当前内存中的状态。
+                var remainingPlayersCount = room.Players.Count(p => p.Id != playerLeavingRecord.Id);
+                if (remainingPlayersCount == 0)
+                {
+                    _context.GameRooms.Remove(room); // 如果房间空了，也解散
+                    await _context.SaveChangesAsync(); // 需要再次保存
+                    return new LeaveRoomResult { Success = true, Message = "玩家离开，房间已空并解散。", RoomDisbanded = true };
+                }
+
+
+                await _context.SaveChangesAsync();
+                return new LeaveRoomResult { Success = true, Message = "已成功离开房间。", RoomDisbanded = false };
+            }
         }
 
         /// <summary>
@@ -371,15 +465,11 @@ namespace backend.Services
             await _context.SaveChangesAsync();
             return true;
         }
-                /// <summary>
-        /// 根据玩家ID获取玩家信息
-        /// </summary>
-        /// <param name="playerId">玩家ID</param>
-        /// <returns>玩家信息，如果不存在则返回null</returns>
-        public async Task<Player> GetPlayerByIdAsync(int playerId)
+            public class LeaveRoomResult
         {
-            return await _context.Players
-                .FirstOrDefaultAsync(p => p.Id == playerId);
+            public bool Success { get; set; }
+            public string? Message { get; set; }
+            public bool RoomDisbanded { get; set; } = false;
         }
     }
 }
