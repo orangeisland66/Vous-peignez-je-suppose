@@ -119,6 +119,35 @@ namespace backend.Controllers
             return Ok(new { success = true, room = room });
         }
 
+                // 新增的 API 端点，用于处理玩家离开或房主解散房间
+        // 完整路由: DELETE /rooms/exit/{roomIdString}/{userId}
+        [HttpDelete("exit/{roomIdString}/{userId}")]
+        public async Task<IActionResult> ExitRoom(string roomIdString, int userId)
+        {
+            if (string.IsNullOrWhiteSpace(roomIdString))
+            {
+                return BadRequest(new { success = false, message = "房间ID不能为空。" });
+            }
+            if (userId <= 0)
+            {
+                return BadRequest(new { success = false, message = "无效的用户ID。" });
+            }
+
+            var result = await _gameRoomService.HandlePlayerLeavingAsync(roomIdString, userId);
+
+            if (!result.Success)
+            {
+                // 根据具体错误消息决定返回的状态码
+                if (result.Message?.Contains("不存在") == true) // 简单判断
+                {
+                    return NotFound(new { success = false, message = result.Message, roomDisbanded = result.RoomDisbanded });
+                }
+                return BadRequest(new { success = false, message = result.Message, roomDisbanded = result.RoomDisbanded });
+            }
+
+            return Ok(new { success = true, message = result.Message, roomDisbanded = result.RoomDisbanded });
+        }
+
          // 开始游戏
         // 完整路由: POST /rooms/start/{roomId}
         [HttpPost("start/{roomId}")]
