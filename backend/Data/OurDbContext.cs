@@ -113,6 +113,13 @@ namespace backend.Data
                 // 配置分数属性
                 entity.Property(s => s.Score).IsRequired();
             });
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(cm => cm.GameRoom)
+                .WithMany(gr => gr.ChatHistory)
+                .HasForeignKey(cm => cm.GameRoomId)
+                .HasPrincipalKey(gr => gr.RoomId)  // 使用 RoomId 作为主键
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public async Task<int> SaveChangesAsync()

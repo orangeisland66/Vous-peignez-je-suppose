@@ -1,10 +1,11 @@
 // E:\m_Documents\Project\Vous-peignez-je-suppose\backend\Controllers\GameRoomController.cs
-
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using backend.Models; // 确保 GameRoom 模型在这里
 using backend.Services;
+using backend.Hubs; // 确保 GameHub 在这里
 using System.Runtime.InteropServices; // 确保 GameRoomService 在这里
 
 namespace backend.Controllers
@@ -17,10 +18,13 @@ namespace backend.Controllers
     public class GameRoomController : ControllerBase
     {
         private readonly GameRoomService _gameRoomService;
-
-        public GameRoomController(GameRoomService gameRoomService)
+        private readonly IHubContext<GameHub> _hubContext;  // 添加这行
+        public GameRoomController(
+            GameRoomService gameRoomService,
+            IHubContext<GameHub> hubContext)
         {
             _gameRoomService = gameRoomService;
+            _hubContext = hubContext;
         }
 
         // 获取所有游戏房间
@@ -66,27 +70,62 @@ namespace backend.Controllers
         // 加入一个已有的游戏房间
         // 完整路由: POST /rooms/join/{roomId}
         [HttpPost("join/{roomId}")]
-       public async Task<IActionResult> JoinRoom(
-        [FromRoute] string roomId,
-        [FromQuery] string userId,
-        [FromBody] Player player)
+        public async Task<IActionResult> JoinRoom(
+            [FromRoute] string roomId,
+            [FromQuery] string userId,
+            [FromBody] Player player)
         {
-            Console.WriteLine($"接收到加入房间的请求，房间 ID: {roomId}, 玩家: {player?.Username}");
-            // ... (代码保持不变) ...
-            if (player == null || string.IsNullOrEmpty(player.Username))
+            try
             {
-                return BadRequest(new { success = false, message = "玩家信息不完整" });
-            }
+                Console.WriteLine($"接收到加入房间的请求 - 房间ID: {roomId}, 用户ID: {userId}, 玩家名称: {player?.Username}");
 
-            var result = await _gameRoomService.JoinRoomAsync(roomId,userId, player);
-            Console.WriteLine($"加入房间结果: {result}");
-            if (result)
-            {
-                return Ok(new { success = true, message = "成功加入房间", roomId = roomId }); // 添加 success 字段
+                // 参数验证
+                if (string.IsNullOrEmpty(roomId))
+                {
+                    return BadRequest(new { success = false, message = "房间ID不能为空" });
+                }
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return BadRequest(new { success = false, message = "用户ID不能为空" });
+                }
+
+                if (player == null || string.IsNullOrEmpty(player.Username))
+                {
+                    return BadRequest(new { success = false, message = "玩家信息不完整" });
+                }
+
+                // 尝试加入房间
+                var result = await _gameRoomService.JoinRoomAsync(roomId, userId, player);
+                if (!result)
+                {
+                    return BadRequest(new { success = false, message = "加入房间失败，可能房间已满或已关闭" });
+                }
+
+                // 返回成功响应（不做 SignalR 分组和广播，分组应由前端连接 SignalR 后调用 GameHub.JoinRoom 完成）
+                return Ok(new 
+                { 
+                    success = true, 
+                    message = "成功加入房间", 
+                    roomId = roomId,
+                    player = new
+                    {
+                        id = player.Id,
+                        username = player.Username,
+                        userId = userId
+                    }
+                });
             }
-            else
+            catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = "加入房间失败" }); // 添加 success 字段
+                Console.WriteLine($"加入房间时发生错误: {ex.Message}");
+                Console.WriteLine($"异常堆栈: {ex.StackTrace}");
+                return StatusCode(500, new 
+                { 
+                    success = false, 
+                    message = "服务器处理请求时发生错误",
+                    error = ex.Message 
+                });
             }
         }
 

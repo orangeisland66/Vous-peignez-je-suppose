@@ -55,13 +55,19 @@
 <script>
 import DrawingBoard from '@/components/game/DrawingBoard.vue';
 import Chat from '@/components/gameRoom/Chat.vue';
-//import signalRService from '@/services/signalRService.js'; // 引入signalRService
+import signalRService from '@/services/signalRService.js'; // 引入 signalRService
 
 export default {
   name: 'GameRoom',
   components: {
     DrawingBoard,
     Chat
+  },
+  props: {
+    playerId: {
+      type: Number,
+      required: false
+    }
   },
   data() {
     return {
@@ -73,14 +79,36 @@ export default {
       isGameActive: true,        // 游戏是否进行中
     };
   },
-  computed:{
-    // remoteStrokes(){
-    //   return signalRService.remoteStrokes;
-    // }
-  },
   mounted() {
-    // 模拟倒计时（实际需结合后端逻辑）
     this.startTimer();
+    
+    const roomId = this.$route.params.roomId;
+    // 优先从 localStorage 获取 userId
+    const playerId = parseInt(localStorage.getItem('userId')) || this.playerId;
+
+    console.log('[GameRoom] Joining room with details:', {
+      roomId,
+      playerId,
+      propsPlayerId: this.playerId,
+      localStorageUserId: localStorage.getItem('userId')
+    });
+
+    if (roomId && playerId) {
+      signalRService.initialize(roomId).then(() => {
+        signalRService.joinGroup(roomId, playerId)
+          .then(() => {
+            console.log(`[SignalR] 成功加入房间: ${roomId}, 玩家ID: ${playerId}`);
+          })
+          .catch(err => {
+            console.error(`[SignalR] 加入房间失败: ${err.message}`);
+            this.$router.push('/lobby');
+          });
+      });
+    } else {
+      console.error('[SignalR] 房间ID或玩家ID缺失，无法加入房间');
+      // 重定向到大厅
+      this.$router.push('/lobby');
+    }
   },
   methods: {
     // 格式化时间

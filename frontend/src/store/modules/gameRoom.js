@@ -139,6 +139,8 @@ const actions = {
     {
       // 这里需要调用API来加入房间
       const response = await apiService.joinRoom(roomId, userId, player)
+      // 新增：SignalR分组加入
+
 
       commit('SET_CURRENT_ROOM', response.data)
       commit('ADD_PLAYER', player) // 添加玩家到玩家列表

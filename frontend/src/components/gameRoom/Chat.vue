@@ -151,6 +151,7 @@ const sendMessage = async () => {
   
     isSending.value = true; // 开始发送，禁用按钮
     await signalRService.sendChatMessage(message);
+    // await signalRService.joinGroup("7ZX3YHE2", 1);
     newMessage.value = '';
     lastMessageTime.value = Date.now();
   } catch (error) {
@@ -226,7 +227,7 @@ const closeEmojiPicker = (e) => {
 onMounted(async () => {
     document.addEventListener('click', closeEmojiPicker);
     // 调用 initialize 方法
-    await signalRService.initialize(route.params.roomId);
+    // await signalRService.initialize(route.params.roomId);
 });
 
 onBeforeUnmount(() => {

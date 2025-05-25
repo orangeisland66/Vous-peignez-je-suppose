@@ -1,4 +1,3 @@
-
 // 默认连接到房间1！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
 //！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
 // src/services/signalRService.js
@@ -50,7 +49,7 @@ class SignalRService {
   }
 
   // 初始化并启动连接
-  async initialize(roomId = 1) { // 默认为房间1
+  async initialize(roomId) { // 默认为房间1
     this.currentRoomId.value = roomId;
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`/gameHub?roomId=${roomId}`)
@@ -159,10 +158,21 @@ class SignalRService {
       console.log('SignalR 连接已断开');
     });
 
-    this.hubConnection.onreconnected(() => {
+    this.hubConnection.onreconnected(async () => {
       this.isConnected.value = true;
       this.connectionId.value = this.hubConnection.connectionId;
       console.log('SignalR 连接已重新建立');
+      // 关键：重连后自动重新加入组
+      if (this.currentRoomId.value && this._lastPlayerIdForJoin) {
+        try {
+          console.log(this.currentRoomId.value);
+          console.log(this._lastPlayerIdForJoin);
+          await this.joinGroup(this.currentRoomId.value, this._lastPlayerIdForJoin);
+          console.log('SignalR 重连后已自动重新加入组');
+        } catch (e) {
+          console.warn('SignalR 重连后自动加入组失败:', e);
+        }
+      }
     });
 
     this.hubConnection.onreconnecting((error) => {
@@ -174,6 +184,19 @@ class SignalRService {
       await this.hubConnection.start();
       this.isConnected.value = true;
       this.connectionId.value = this.hubConnection.connectionId;
+      console.log('SignalR 连接已重新建立');
+      // 关键：重连后自动重新加入组
+       console.log(this.currentRoomId.value);
+      console.log(this._lastPlayerIdForJoin);
+      if (this.currentRoomId.value && this._lastPlayerIdForJoin) {
+        try {
+         
+          await this.joinGroup(this.currentRoomId.value, this._lastPlayerIdForJoin);
+          console.log('SignalR 重连后已自动重新加入组');
+        } catch (e) {
+          console.warn('SignalR 重连后自动加入组失败:', e);
+        }
+      }
       console.log(`SignalR 已连接到房间 ${roomId}`);
       return true;
     } catch (error) {
@@ -201,6 +224,29 @@ class SignalRService {
         return false;
     }
   }
+
+  // 加入SignalR组（房间），需要在连接建立后调用
+  async joinGroup(groupId, playerId) {
+    if (!this.isConnected.value || !this.hubConnection) {
+      console.error('SignalR 连接未建立，无法加入组');
+      return false;
+    }
+    try {
+      // 先建立连接映射
+      await this.hubConnection.invoke('AddToConnectionMap', this.hubConnection.connectionId, playerId);
+      // 再加入房间
+      await this.hubConnection.invoke('JoinRoom', groupId, playerId);
+      // 记录最后一次加入组的playerId，便于重连后自动恢复
+      this._lastPlayerIdForJoin = playerId;
+      console.log('SignalR 连接已加入组:', this._lastPlayerIdForJoin);
+      console.log(`已加入SignalR组: ${groupId}, 玩家ID: ${playerId}`);
+      return true;
+    } catch (error) {
+      console.error('加入SignalR组失败:', error);
+      return false;
+    }
+  }
+
   // 断开连接
   async disconnect() {
     if (this.hubConnection) {
@@ -301,4 +347,5 @@ class SignalRService {
 
 // 创建单例实例
 const signalRService = new SignalRService();
+
 export default signalRService;

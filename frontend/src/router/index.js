@@ -71,10 +71,12 @@ const routes = [
   // 进入游戏页面
   { 
     path: '/room/:roomId/game', 
-    name: 'GameRoom', 
-    component: GameRoom, 
-    // meta: { requiresAuth: true }, 
-    // beforeEnter:checkGamePermission
+    name: 'GameRoom',
+    component: GameRoom,
+    // 修改 props 配置以支持多个来源的 playerId
+    props: route => ({
+      playerId: parseInt(localStorage.getItem('userId')) || parseInt(route.params.playerId) || null
+    })
   },
   // 单轮游戏结束页面
   { 
