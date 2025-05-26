@@ -2,20 +2,45 @@
   <div class="game-background">
     <div class="game-container">
       <!-- Header: Round & Painter & Timer -->
+      <div class="header-info">
+        <div class="round-badge">
+          <span class="round-label">当前回合</span>
+          <span class="round-number">第 {{ currentRound }} 轮</span>
+        </div>
 
-        <div class="header-info">
-          <div class="round-badge">
-            <span class="round-label">当前回合</span>
-            <span class="round-number">第 {{ currentRound }} 轮</span>
+        <div class="timer-badge">
+          <div class="timer-icon">⏱</div>
+          <span class="timer-text">{{ formatTime(timer) }}</span>
+        </div>
+
+        <!-- 玩家状态显示 -->
+        <div class="players-status">
+          <div class="player-item" v-for="player in players" :key="player.id"
+            :class="{ active: player.id === currentPainterId }">
+            <div class="player-avatar">
+              <span>{{ player.username?.charAt(0).toUpperCase() || 'P' }}</span>
+            </div>
+            <div class="player-info">
+              <span class="player-name">{{ player.username }}</span>
+              <span class="player-role" v-if="player.id === currentPainterId">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <!-- ...svg path... -->
+                  <path
+                    d="M12 2C13.1 2 14 2.9 14 4V5.18C17.06 5.6 19.4 8.27 19.4 11.4C19.4 13.5 18.1 15.36 16.17 16.19L15.5 16.47V18C15.5 19.1 14.6 20 13.5 20H10.5C9.4 20 8.5 19.1 8.5 18V16.47L7.83 16.19C5.9 15.36 4.6 13.5 4.6 11.4C4.6 8.27 6.94 5.6 10 5.18V4C10 2.9 10.9 2 12 2ZM12 7C9.24 7 7 9.24 7 12C7 13.66 8.34 15 10 15H14C15.66 15 17 13.66 17 12C17 9.24 14.76 7 12 7Z" />
+                </svg>
+                画家
+              </span>
+            </div>
           </div>
-          <div class="timer-badge">
-            <div class="timer-icon">⏱</div>
-            <span class="timer-text">{{ formatTime(timer) }}</span>
+        </div>
+
+        <!-- 当前词汇显示 -->
+        <div class="current-word-badge" v-if="targetWord && !showWordSelection">
+          <div class="word-icon">📝</div>
+          <div class="word-content">
+            <span class="word-label">{{ isPainter ? '绘画词汇' : '词汇提示' }}</span>
+            <span class="word-text">{{ isPainter ? targetWord : getWordHint(targetWord) }}</span>
           </div>
-       
-        <div class="painter-info">
-          <!-- <div class="painter-avatar">{{ currentPainter.charAt(0) }}</div> -->
-          <span class="painter-name">{{ currentPainter }}</span>
         </div>
       </div>
 
@@ -24,15 +49,9 @@
         <!-- Left Panel - Canvas -->
         <section class="canvas-panel">
           <div class="canvas-container">
-            <drawing-board
-              ref="drawingBoard"
-              :readonly="!isPainter"
-              @stroke-completed="onStrokeCompleted"
-              @canvas-cleared="onCanvasCleared"
-            />
+            <drawing-board ref="DrawingBoard" :readonly="!isPainter" :tool="currentTool" :color="currentColor"
+              :size="currentSize" @stroke-completed="onStrokeCompleted" @canvas-cleared="onCanvasCleared" />
           </div>
-          
-
         </section>
 
         <!-- Right Panel - Chat -->
@@ -40,13 +59,44 @@
           <div class="panel-header">
             <h2>游戏聊天</h2>
           </div>
-          
-          <Chat 
-            :isPainter="isPainter"
-            :targetWord="targetWord"
-            @guess-correct="handleCorrectGuess"
-          />
+
+          <Chat :isPainter="isPainter" :targetWord="targetWord" @guess-correct="handleCorrectGuess" />
         </section>
+      </div>
+    </div>
+
+    <!-- 词汇选择弹窗 -->
+    <div class="word-selection-overlay" v-if="isPainter && showWordSelection">
+      <div class="word-selection-modal">
+        <div class="modal-header">
+          <h3>选择你要画的词汇</h3>
+          <p class="selection-tip">弹窗，作画的显示四个词汇四选一，猜词者显示"作画者正在选词"</p>
+        </div>
+
+        <div class="word-options">
+          <div class="word-option" v-for="(word, index) in wordOptions" :key="index" @click="selectWord(word)">
+            <div class="word-text">{{ word.text }}</div>
+            <div class="word-difficulty">{{ word.difficulty }}星</div>
+          </div>
+        </div>
+
+        <div class="selection-timer">
+          <div class="timer-bar">
+            <div class="timer-progress" :style="{ width: selectionProgress + '%' }"></div>
+          </div>
+          <p class="timer-text">选择时间：{{ selectionTimer }}秒</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 等待画家选词的提示（给猜词者看） -->
+    <div class="waiting-overlay" v-if="!isPainter && showWordSelection">
+      <div class="waiting-modal">
+        <div class="waiting-content">
+          <div class="waiting-icon">🎨</div>
+          <h3>作画者正在选词</h3>
+          <p>请耐心等待...</p>
+        </div>
       </div>
     </div>
   </div>
@@ -55,7 +105,6 @@
 <script>
 import DrawingBoard from '@/components/game/DrawingBoard.vue';
 import Chat from '@/components/gameRoom/Chat.vue';
-//import signalRService from '@/services/signalRService.js'; // 引入signalRService
 
 export default {
   name: 'GameRoom',
@@ -65,24 +114,116 @@ export default {
   },
   data() {
     return {
-      currentRound: 1,          // 当前回合数
-      currentPainter: 'Alice',   // 当前画师
-      timer: 60,                // 倒计时（秒）
-      targetWord: 'umbrella',   // 目标词语（实际从后端获取）
-      isPainter: true,         // 是否为画师（需根据业务逻辑动态设置）
-      isGameActive: true,        // 游戏是否进行中
+      currentRound: 1,
+      currentPainter: 'Alice',
+      players: [],
+      currentPainterId: null,
+      timer: 60,
+      targetWord: '',
+      isPainter: true,
+      isGameActive: true,
+      showWordSelection: true,
+      selectionTimer: 15,
+      selectionProgress: 100,
+      wordOptions: [
+        { text: '苹果', difficulty: 1 },
+        { text: '汽车', difficulty: 2 },
+        { text: '彩虹', difficulty: 3 },
+        { text: '飞机', difficulty: 2 }
+      ],
+      // 绘画工具相关
+      currentTool: 'pen',
+      currentColor: '#000000',
+      currentSize: 5,
+      colors: [
+        '#000000', '#FF0000', '#00FF00', '#0000FF',
+        '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500',
+        '#800080', '#FFC0CB', '#A52A2A', '#808080'
+      ],
+      brushSizes: [2, 5, 10, 15, 20]
     };
   },
-  computed:{
-    // remoteStrokes(){
-    //   return signalRService.remoteStrokes;
-    // }
+  computed: {
+    // 为猜词者显示词汇提示（部分字符用下划线代替）
+    getWordHint() {
+      return (word) => {
+        if (!word) return '';
+        return word.split('').map((char, index) => {
+          // 显示第一个和最后一个字符，中间用下划线
+          if (index === 0 || index === word.length - 1) {
+            return char;
+          }
+          return '_';
+        }).join(' ');
+      };
+    },
+    currentPainterObj() {
+      return this.players.find(p => p.id === this.currentPainterId) || {};
+    }
   },
   mounted() {
-    // 模拟倒计时（实际需结合后端逻辑）
-    this.startTimer();
+    this.initializeGame();
+  },
+  async mounted() {
+    await this.fetchRoomPlayers();
   },
   methods: {
+    // 初始化游戏
+    initializeGame() {
+      if (this.isPainter) {
+        this.showWordSelectionModal();
+      } else {
+        this.startTimer();
+      }
+    },
+    async fetchRoomPlayers() {
+      try {
+        const roomId = this.$route.params.roomId;
+        const res = await apiService.getRoomDetails(roomId);
+        if (res && res.room && res.room.players) {
+          this.players = res.room.players.map(p => p.user); // 假设后端结构为 room.players[{user:{...}, isHost:...}]
+          // 你可以根据后端返回的数据结构调整
+          // 假设后端有 currentPainterId 字段
+          this.currentPainterId = res.room.currentPainterId || (this.players[0] && this.players[0].id);
+        }
+      } catch (e) {
+        console.error('获取玩家列表失败', e);
+      }
+    },
+    // 显示选词弹窗
+    showWordSelectionModal() {
+      this.showWordSelection = true;
+      this.selectionTimer = 15;
+      this.selectionProgress = 100;
+      this.startSelectionTimer();
+    },
+
+    // 选词倒计时
+    startSelectionTimer() {
+      const interval = setInterval(() => {
+        this.selectionTimer--;
+        this.selectionProgress = (this.selectionTimer / 15) * 100;
+
+        if (this.selectionTimer <= 0) {
+          clearInterval(interval);
+          // 时间到自动选择第一个词
+          this.selectWord(this.wordOptions[0]);
+        }
+      }, 1000);
+    },
+
+    // 选择词汇
+    selectWord(selectedWord) {
+      this.targetWord = selectedWord.text;
+      this.showWordSelection = false;
+      this.isGameActive = true;
+      this.timer = 60;
+      this.startTimer();
+
+      // 这里可以通过SignalR通知其他玩家开始游戏
+      console.log('画家选择了词汇:', selectedWord.text);
+    },
+
     // 格式化时间
     formatTime(sec) {
       const m = String(Math.floor(sec / 60)).padStart(2, '0');
@@ -93,62 +234,81 @@ export default {
     // 处理猜对事件
     handleCorrectGuess() {
       this.isGameActive = false;
-      this.currentRound++; // 进入下一回合
-      this.resetGame();    // 重置游戏状态（示例逻辑）
-      
-      // 模拟切换画师（实际需与后端交互）
+      this.currentRound++;
+      this.resetGame();
+
+      // 切换画师
       this.currentPainter = this.currentPainter === 'Alice' ? 'Bob' : 'Alice';
-      this.targetWord = this.getRandomWord(); // 随机新词语
-      this.timer = 60;
       this.isPainter = !this.isPainter;
+
+      // 重新开始选词流程
+      setTimeout(() => {
+        this.initializeGame();
+      }, 2000);
     },
 
-    // 启动倒计时
+    // 启动游戏倒计时
     startTimer() {
-      if (this.isGameActive && this.timer > 0) {
-        setTimeout(() => {
+      const timerInterval = setInterval(() => {
+        if (this.isGameActive && this.timer > 0) {
           this.timer--;
-          this.startTimer();
-        }, 1000);
-      } else if (this.timer === 0 && this.isGameActive) {
-        this.isGameActive = false;
-        // 处理倒计时结束逻辑（如平局、切换画师等）
-      }
+        } else {
+          clearInterval(timerInterval);
+          if (this.timer === 0 && this.isGameActive) {
+            this.isGameActive = false;
+            this.handleTimeUp();
+          }
+        }
+      }, 1000);
+    },
+
+    // 时间到处理
+    handleTimeUp() {
+      console.log('时间到！');
+      // 处理倒计时结束逻辑
+      this.handleCorrectGuess(); // 可以调用相同的逻辑进入下一轮
     },
 
     // 重置游戏状态
     resetGame() {
-      this.$refs.drawingBoard.clearCanvas(); // 清空画布（需DrawingBoard组件支持）
-      // 其他重置逻辑...
+      if (this.$refs.drawingBoard && this.$refs.drawingBoard.clearCanvas) {
+        this.$refs.drawingBoard.clearCanvas();
+      }
+      this.targetWord = '';
     },
 
-    // 随机词语示例（实际从词库获取）
-    getRandomWord() {
-      const words = ['apple', 'banana', 'umbrella', 'computer', 'flower'];
-      return words[Math.floor(Math.random() * words.length)];
+    // 绘画工具相关方法
+    selectTool(tool) {
+      this.currentTool = tool;
+      console.log('选择工具:', tool);
+    },
+
+    selectColor(color) {
+      this.currentColor = color;
+      console.log('选择颜色:', color);
+    },
+
+    selectSize(size) {
+      this.currentSize = size;
+      console.log('选择画笔大小:', size);
+    },
+
+    clearCanvas() {
+      if (this.$refs.drawingBoard && this.$refs.drawingBoard.clearCanvas) {
+        this.$refs.drawingBoard.clearCanvas();
+      }
     },
 
     // 绘图相关事件处理
-    // 在DrawingBoard组件中一笔绘制完成会调用这个函数
-    // 在这里调用我的signalR中的函数，发送消息到后端
     onStrokeCompleted(stroke) {
+      console.log('在GameRoom.vue的onStrokeCompleted函数中收到笔画:', stroke);
 
-      // 调试信息
-      console.log('在GameRoom.vue的onStrokeCompleted函数中收到笔画:',stroke);
+      if (!this.isPainter || !stroke) return;
 
-      // 如需同步到其他玩家，此处发送WebSocket消息
-      if(!this.isPainter || !stroke) return;
-      
-      // 调试信息
       console.log('在GameRoom.vue的onStrokeCompleted中开始调用SignalR发送消息');
-      // 前端不做连接判断，等到signalR中判断
-      // //通过signalR发送消息到后端
-      // if(!this.signalRService.isConnected.value){
-      //   console.warn('SignalR未连接,无法发送笔画');
-      //   return;
-      // }
-      //await signalRService.sendStroke(stroke);
+      // 通过signalR发送消息到后端
     },
+
     onCanvasCleared() {
       console.log('画布已清空');
     }
@@ -176,9 +336,7 @@ export default {
 
 /* Base and Layout Styles */
 .game-background {
-  /* margin-top: 5%; */
   background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
-  /* height: calc(100vh - 300px); */
   width: 100vw;
   display: flex;
   justify-content: center;
@@ -200,20 +358,14 @@ export default {
 }
 
 /* Header Styles */
-.game-header {
-  height: 60px; /* 原高度可能为 80px+，调小至 60px 或更小 */
-  padding: 0 20px; /* 减少左右内边距 */
-  /* 可选：压缩文字大小 */
-  font-size: 14px; 
-  
-}
-
 .header-info {
   display: flex;
-  height: 0px;
   align-items: center;
   gap: 20px;
-  /* margin-right: auto; */
+  padding: 20px;
+  background: white;
+  border-bottom: 1px solid var(--gray-light);
+  flex-wrap: wrap;
 }
 
 .round-badge {
@@ -259,58 +411,252 @@ export default {
   font-size: 16px;
 }
 
-.painter-info {
+/* 玩家状态样式 */
+.players-status {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  background: var(--primary-lightest);
-  padding: 8px 30px;
-  border-radius: 50px;
-  box-shadow: 0 2px 10px rgba(79, 70, 229, 0.1);
-  margin-left: auto;
+  gap: 15px;
 }
 
-.painter-avatar {
-  width: 36px;
-  height: 36px;
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--light);
+  transition: all 0.3s ease;
+}
+
+.player-item.active {
+  background: linear-gradient(135deg, var(--primary-lightest) 0%, #ffffff 100%);
+  border: 2px solid var(--primary-light);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+}
+
+.player-avatar {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--primary);
   color: white;
   display: flex;
   align-items: center;
-  justify-content: center; 
+  justify-content: center;
   font-weight: 600;
-  font-size: 16px;
-  margin-right: 8px; 
+  font-size: 14px;
 }
 
-.painter-name {
+.player-item.active .player-avatar {
+  background: var(--primary-dark);
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-name {
   font-weight: 500;
-  color: var(--primary-dark);
-  text-align: center; 
+  color: var(--dark);
+  font-size: 14px;
+}
+
+.player-role {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+/* 当前词汇显示样式 */
+.current-word-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, var(--secondary) 0%, #34D399 100%);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  margin-left: auto;
+}
+
+.word-icon {
+  font-size: 18px;
+}
+
+.word-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.current-word-badge .word-label {
+  font-size: 12px;
+  color: black;
+  opacity: 0.9;
+  font-weight: 600;
+}
+
+.current-word-badge .word-text {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.9;
+  letter-spacing: 3px;
+  color: black;
 }
 
 /* Main Content Layout */
 .main-content {
   display: flex;
   height: auto;
-  /* min-height: 600px; */
-  padding: 20px 0px;
-
+  padding: 20px 20px;
   gap: 24px;
+  flex: 1;
 }
 
 /* Canvas Panel Styles */
 .canvas-panel {
-  height: auto;
   flex: 2;
   position: relative;
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+/* 绘画工具栏样式 */
+.drawing-toolbar {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+}
+
+.tool-group {
+  display: flex;
+  gap: 8px;
+}
+
+.tool-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--light);
+  border: 2px solid transparent;
+}
+
+.tool-item:hover {
+  background: var(--primary-lightest);
+}
+
+.tool-item.active {
+  background: var(--primary-lightest);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.tool-item span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.color-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.color-palette {
+  display: flex;
+  gap: 6px;
+}
+
+.color-item {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.color-item:hover {
+  transform: scale(1.1);
+}
+
+.color-item.active {
+  box-shadow: 0 0 0 3px var(--primary);
+  transform: scale(1.1);
+}
+
+.size-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.size-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.size-options {
+  display: flex;
+  gap: 8px;
+}
+
+.size-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--light);
+  border: 2px solid transparent;
+}
+
+.size-item:hover {
+  background: var(--primary-lightest);
+}
+
+.size-item.active {
+  background: var(--primary-lightest);
+  border-color: var(--primary);
+}
+
+.size-dot {
+  background: var(--dark);
+  border-radius: 50%;
+}
+
+.size-item span {
+  font-size: 10px;
 }
 
 .canvas-container {
-  height: auto;
   flex: 1;
   display: flex;
   justify-content: center;
@@ -319,28 +665,7 @@ export default {
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  /* margin-bottom: 16px; */
-}
-
-.word-hint {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  color: white;
-  padding: 12px 16px;
-  border-radius: 12px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-}
-
-.hint-label {
-  font-size: 12px;
-  opacity: 0.8;
-  margin-bottom: 4px;
-}
-
-.target-word {
-  font-size: 24px;
-  font-weight: 600;
+  min-height: 400px;
 }
 
 /* Guess Panel Styles */
@@ -350,8 +675,6 @@ export default {
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  height: var(--panel-height);
-  /* max-height: 100vh;  */
   display: flex;
   flex-direction: column;
 }
@@ -371,162 +694,161 @@ export default {
   margin: 0;
 }
 
-.guess-count {
-  background: var(--primary-lightest);
-  color: var(--primary);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 4px 12px;
-  border-radius: 50px;
-}
-
-.guess-input-container {
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--gray-light);
-}
-
-.input-wrapper {
+/* 词汇选择弹窗样式 */
+.word-selection-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.word-selection-modal {
   background: white;
-  border: 2px solid var(--gray-light);
-  border-radius: 10px;
-  overflow: hidden;
-  transition: all 0.2s ease;
+  border-radius: 20px;
+  padding: 30px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
-.input-wrapper:focus-within {
-  border-color: var(--primary-light);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+.modal-header {
+  text-align: center;
+  margin-bottom: 30px;
 }
 
-.guess-input {
-  flex: 1;
-  border: none;
-  padding: 12px 16px;
-  font-size: 16px;
-  outline: none;
-}
-
-.send-btn {
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 0 16px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.send-btn:hover {
-  background: var(--primary-dark);
-}
-
-.send-icon {
-  font-size: 18px;
-}
-
-.guess-list-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-}
-
-.guess-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.guess-item {
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 8px;
-  border: 1px solid var(--gray-light);
-  transition: all 0.2s ease;
-}
-
-.guess-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-  border-color: var(--primary-light);
-}
-
-.guesser-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--primary-lightest);
-  color: var(--primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.modal-header h3 {
+  font-size: 24px;
   font-weight: 600;
-  font-size: 16px;
-  margin-right: 12px;
-}
-
-.guess-content {
-  flex: 1;
-}
-
-.guesser-name {
-  font-size: 14px;
-  color: var(--gray);
-  margin-bottom: 2px;
-}
-
-.guess-word {
-  font-size: 16px;
-  font-weight: 500;
   color: var(--dark);
+  margin: 0 0 10px 0;
 }
 
-.guess-status {
-  margin-left: 8px;
-}
-
-.status-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.selection-tip {
+  color: var(--gray);
   font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
 }
 
-.status-icon.correct {
-  background: #DCFCE7;
-  color: var(--success);
+.word-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 25px;
 }
 
-.status-icon.wrong {
-  background: #FEF2F2;
-  color: var(--danger);
+.word-option {
+  background: linear-gradient(135deg, var(--primary-lightest) 0%, #ffffff 100%);
+  border: 2px solid var(--primary-light);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.no-guesses {
+.word-option:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.2);
+  border-color: var(--primary);
+}
+
+.word-selection-modal .word-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.word-difficulty {
+  font-size: 14px;
+  color: var(--warning);
+  font-weight: 500;
+}
+
+.selection-timer {
+  text-align: center;
+}
+
+.timer-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--gray-light);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.timer-progress {
   height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+  transition: width 1s linear;
+}
+
+/* 等待弹窗样式 */
+.waiting-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.waiting-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.waiting-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  color: var(--gray);
-  text-align: center;
-  padding: 20px;
 }
 
-.empty-icon {
+.waiting-icon {
   font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
+  margin-bottom: 20px;
+  animation: pulse 2s infinite;
 }
 
-.no-guesses p {
-  font-size: 16px;
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
+.waiting-content h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--dark);
+  margin: 0 0 10px 0;
+}
+
+.waiting-content p {
+  color: var(--gray);
+  margin: 0;
+}
 
 /* Responsive Adjustments */
 @media (max-width: 992px) {
@@ -534,31 +856,42 @@ export default {
     flex-direction: column;
     height: auto;
   }
-  
+
   .canvas-panel {
     margin-bottom: 24px;
   }
-  
-  .game-header {
+
+  .header-info {
     flex-direction: column;
     gap: 12px;
-  }
-  
-  .header-info {
-    width: 100%;
-    justify-content: space-between;
-  }
-}
-
-@media (max-width: 992px) {
-  .main-content {
-    flex-direction: column;
     height: auto;
     padding: 16px;
   }
 
-  .canvas-panel {
-    margin-bottom: 24px;
+  .players-status {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .current-word-badge {
+    margin-left: 0;
+  }
+
+  .drawing-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .tool-group,
+  .color-group,
+  .size-group {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .word-options {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -1,12 +1,12 @@
 import './assets/main.css'
+
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import './styles/global.css'
-import store from './store'
-//import './assets/styles/theme.css'
+import '@fortawesome/fontawesome-free/css/all.css'
+import '@fortawesome/fontawesome-free/js/all.js'  // 如果需要 JS 支持
 
 const app = createApp(App)
-app.use(store)
 app.use(router)
-app.mount('#app')
+app.mount('#app')   
