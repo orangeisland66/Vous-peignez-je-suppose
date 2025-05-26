@@ -271,7 +271,7 @@ namespace backend.Services
                 .OrderBy(d => d.Timestamp)
                 .ToListAsync();
         }
-         /// <summary>
+        /// <summary>
         /// 根据玩家 ID 获取玩家信息
         /// </summary>
         /// <param name="playerId">玩家 ID</param>
@@ -280,8 +280,50 @@ namespace backend.Services
         {
             return await _context.Players.FindAsync(playerId);
         }
+        /// <summary>
+        /// 创建新玩家
+        /// </summary>
+        /// <param name="player">玩家对象（需包含 UserId 和 Username）</param>
+        /// <returns>创建后的玩家对象（包含数据库生成的 Id）</returns>
+        public async Task<Player> CreatePlayerAsync(Player player)
+        {
+            // 校验必填字段
+            if (player.UserId == 0)
+            {
+                throw new ArgumentException("玩家必须关联 UserId", nameof(player.UserId));
+            }
+
+            if (string.IsNullOrEmpty(player.Username))
+            {
+                player.Username = $"玩家_{player.UserId}"; // 自动生成默认用户名
+            }
+
+            // 设置玩家默认状态
+            player.Score = 0; // 初始分数为 0
+            player.Status = PlayerStatus.Waiting; // 初始状态为等待
+            player.LastDrawingTime = null; // 未画过图
+
+            // 添加到数据库
+            _context.Players.Add(player);
+            await _context.SaveChangesAsync();
+
+            Console.WriteLine($"新玩家创建成功：Id={player.Id}, UserId={player.UserId}, 用户名={player.Username}");
+            return player;
+        }
+        /// <summary>
+        /// 根据 UserId 查找玩家（关联用户系统的唯一标识）
+        /// </summary>
+        /// <param name="userId">用户系统中的 UserId</param>
+        /// <returns>玩家对象，若不存在则返回 null</returns>
+        public async Task<Player> GetPlayerByUserIdAsync(int userId)
+        {
+            return await _context.Players
+                .FirstOrDefaultAsync(p => p.UserId == userId);
+        }
 
     }
+
+    
 
     /// <summary>
     /// 画图数据模型

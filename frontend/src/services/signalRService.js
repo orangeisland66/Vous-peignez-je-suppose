@@ -59,7 +59,7 @@ class SignalRService {
     // 注册接收消息的处理函数
     this.hubConnection.on('ReceiveChatMessage', (data) => {
       console.log('接收到消息:', data);
-      
+       console.log(this.chatMessages.value);
       // 验证数据格式
       if (!data || !data.content) {
         console.error('无效的消息格式:', data);
@@ -67,7 +67,7 @@ class SignalRService {
       }
       
       // 使用不可变方式更新数组（确保 Vue 检测到变化）
-      this.chatMessages.value = [
+         this.chatMessages.value = [
         ...this.chatMessages.value,
         {
           playerId: data.playerId || 0,
@@ -75,11 +75,13 @@ class SignalRService {
           content: data.content,  // 关键：使用 content 字段
           timestamp: data.timestamp || new Date().toISOString(),
           isSystem: false,
-          isCorrect: false,
-          isWrong: false
+          isCorrect: data.isCorrect || false, // 默认值为 false
+          isWrong: false,
+          scores: data.scores || []
         }
       ];
     });
+   
 
     // 注册接受绘画数据的处理函数
     /*********************************/

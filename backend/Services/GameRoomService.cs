@@ -151,7 +151,7 @@ namespace backend.Services
             //确保不是重复加入
             if (gameRoom.Players.Any(p => p.UserId.ToString() == userId))
             {
-                return true;
+                return false;
             }
 
             // 加载用户

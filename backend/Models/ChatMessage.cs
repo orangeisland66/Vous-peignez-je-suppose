@@ -13,6 +13,7 @@ namespace backend.Models
         
         public string GameRoomId { get; set; }  // 改为 string 类型
         public GameRoom GameRoom { get; set; }
+        public bool IsCorrect { get; set; } // 添加 IsCorrect 属性
 
         public ChatMessage()
         {

@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using backend.Models;
 using backend.Services;
 using backend.Data;
+using Microsoft.AspNetCore.Mvc;
+using backend.Runtime;
 
 namespace backend.Hubs
 {
@@ -15,11 +17,16 @@ namespace backend.Hubs
         private static readonly ConcurrentDictionary<string, int> _connectionPlayerMap = new();
         private readonly OurDbContext _context;
 
-        public GameHub(GameRoomService gameRoomService, GameService gameService, OurDbContext context)
+
+        private readonly GameRoomRuntimeManager _runtimeManager;
+
+        public GameHub(GameRoomService gameRoomService, GameService gameService, OurDbContext context, 
+            GameRoomRuntimeManager runtimeManager)
         {
             _gameRoomService = gameRoomService;
             _gameService = gameService;
             _context = context;
+            _runtimeManager = runtimeManager;
             // _connectionPlayerMap = new ConcurrentDictionary<string, int>();
         }
 
@@ -39,39 +46,52 @@ namespace backend.Hubs
             return;
         }
         Console.WriteLine($"4");
-         // 获取玩家信息
-        var player = await _gameService.GetPlayerByIdAsync(userId);
-        if (player == null)
-        {
-            Console.WriteLine($"5");
-            await Clients.Caller.SendAsync("PlayerNotFound", "玩家不存在");
-            return;
-        }
+            //      // 获取玩家信息
+            //     var player = await _gameService.GetPlayerByIdAsync(userId);
+            // if (player == null)
+            // {
+            //     // 如果玩家不存在，创建新玩家对象
+            //     Console.WriteLine($"创建新玩家: UserId={userId}");
+            //     player = new Player
+            //     {
+            //         UserId = userId, // 关联用户ID
+            //         Username = $"玩家{userId}", // 默认用户名，可从用户服务获取
+            //         Score = 0,
+            //         Status = PlayerStatus.Waiting,
+            //         // 设置其他必要属性
+            //     };
 
-         // SignalR连接加入组
+            //     // 保存新玩家到数据库
+            //     await _gameService.CreatePlayerAsync(player);
+            //     Console.WriteLine($"新玩家已创建: Id={player.Id}, Username={player.Username}");
+            // }
+            // SignalR连接加入组
+        var player=await _gameService.GetPlayerByUserIdAsync(userId);
+        Console.WriteLine($"当前用户信息：{player.Id},{player.Username}");
         await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
         _connectionPlayerMap[Context.ConnectionId] = userId;
             // 通知房间内其他玩家
         await Clients.Group(roomId.ToString()).SendAsync("PlayerJoined", player.Username);
         await Clients.Caller.SendAsync("JoinedRoom", roomId);
         // 校验玩家是否已经在房间内
-            var existingPlayer = room.Players.FirstOrDefault(p => p.Id == userId);
-        if (existingPlayer != null)
-        {
-            Console.WriteLine($"玩家已在房间中");
-            await Clients.Caller.SendAsync("PlayerAlreadyInRoom", "玩家已在房间中");
-            return;
-        }
 
-       
-        // 将玩家添加到房间的玩家列表中
-        room.Players.Add(player);
+
 
         // 保存数据库更改
         await _gameRoomService.UpdateRoomAsync(room);
 
-        Console.WriteLine($"6");
+         _runtimeManager.GetOrCreateState(roomId, () =>
+        {
+            return new ActiveGameState
+            {
+                GameRoomId = room.Id,
+                TotalRounds = room.Rounds,
+                CurrentRound = 1,
+                // 可选：初始化目标单词或其他状态字段
+            };
+        });
 
+        Console.WriteLine($"6");
        
 
         Console.WriteLine($"[SignalR] 已将连接 ID {Context.ConnectionId} 映射到玩家 ID {userId}");
@@ -82,7 +102,13 @@ namespace backend.Hubs
         {
             Console.WriteLine($"连接ID: {kvp.Key}, 玩家ID: {kvp.Value}");
         }
-
+        var existingPlayer = room.Players.FirstOrDefault(p => p.UserId == userId);
+        if (existingPlayer != null)
+        {
+            Console.WriteLine($"玩家已在房间中");
+            await Clients.Caller.SendAsync("PlayerAlreadyInRoom", "玩家已在房间中");
+            return;
+        }
        
     }
 
@@ -343,25 +369,30 @@ public async Task SendChatMessage(string roomId, string message)
         {
             throw new Exception("房间不存在");
         }
+        foreach (var player1 in room.Players) {
+        Console.WriteLine($"玩家: {player1.Username}, 状态: {player1.Status}, 分数: {player1.Score}");
+        }
+        Console.WriteLine(room.Players.Count);
+        List<int> scoreList = room.Players.Select(player => player.Score).ToList();
         // **获取当前连接的玩家ID（使用线程安全的ConcurrentDictionary）**
-        if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int UserId))
-        {
-            Console.WriteLine($"[SignalR] SendChatMessage时未找到玩家信息，当前连接ID: {Context.ConnectionId}");
-            Console.WriteLine("[SignalR] 当前所有连接映射：");
-            foreach (var kvp in _connectionPlayerMap)
+                if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int UserId))
+                {
+                    Console.WriteLine($"[SignalR] SendChatMessage时未找到玩家信息，当前连接ID: {Context.ConnectionId}");
+                    Console.WriteLine("[SignalR] 当前所有连接映射：");
+                    foreach (var kvp in _connectionPlayerMap)
                     {
                         Console.WriteLine($"连接ID: {kvp.Key}, 玩家ID: {kvp.Value}");
                     }
-            throw new Exception("未找到玩家信息");
-        }
+                    throw new Exception("未找到玩家信息");
+                }
 
         // 校验玩家是否在房间中（从数据库获取玩家列表，避免依赖内存映射）
         var player = room.Players.FirstOrDefault(p => p.UserId.HasValue && p.UserId.Value == UserId);
         Console.WriteLine($"[SignalR] SendChatMessage - 玩家ID: {UserId}, 玩家用户名: {player?.Username ?? "未知"}");
         if (player == null)
-                {
-                    throw new Exception("玩家不在当前房间中");
-                }
+        {
+            throw new Exception("玩家不在当前房间中");
+        }
         Console.WriteLine($"1");
         // 构建消息对象
         var chatMessage = new ChatMessage
@@ -372,39 +403,67 @@ public async Task SendChatMessage(string roomId, string message)
             Timestamp = DateTime.UtcNow,
             // Sender = player.User // 关联用户信息
         };
-Console.WriteLine($"2");
+        Console.WriteLine($"2");
         // 保存消息到数据库
         try
         {
             _context.ChatMessages.Add(chatMessage);
-            await _context.SaveChangesAsync();
+            
         }
         catch (Exception ex)
         {
             Console.WriteLine($"保存聊天消息失败: {ex.Message}");
             // 继续执行，即使保存失败也尝试发送消息
         }
-Console.WriteLine($"3");
-        // 广播消息给房间内的所有玩家
-        await Clients.Group(roomId.ToString()).SendAsync("ReceiveChatMessage", new
+        var is_Correct = false;
+        if (!_runtimeManager.TryGetState(roomId, out var activeState))
         {
-            GameRoomId = roomId,
-            SenderId = UserId,
-            playerId = player.Id,
-            username = player.User?.Username ?? player.Username,
-            content = message,
-            timestamp = chatMessage.Timestamp.ToString("o"),
-        });
+            Console.WriteLine("当前房间没有运行时状态，请检查游戏是否已初始化");
+            throw new Exception("房间状态不存在");
+        }
 
-        Console.WriteLine($"消息已广播 - 房间ID: {roomId}, 玩家: {player.Username}");
+        if (message == activeState.CurrentTargetWord)
+                {
+                    is_Correct = true;
+                    //更新玩家分数
+                    player.Score += 1; // 假设猜对加1分
+                    _context.Players.Update(player);
+                }
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"保存聊天消息到数据库失败: {ex.Message}");
+            // 继续执行，即使保存失败也尝试发送消息
+        }
+        Console.WriteLine($"3");
+                // 广播消息给房间内的所有玩家
+        try
+        {
+            await Clients.Group(roomId).SendAsync("ReceiveChatMessage", new
+            {
+                playerId = UserId,
+                username = player.Username, // 玩家用户名
+                content = message,
+                timestamp = chatMessage.Timestamp.ToString("o"), // ISO 8601 格式时间戳
+                isCorrect = is_Correct, // 是否猜对
+                scores = scoreList // 广播当前分数列表
+            });
+            Console.WriteLine($"广播消息成功，房间ID：{roomId}，玩家ID：{UserId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"广播消息失败: {ex.Message}");
+            await Clients.Caller.SendAsync("ChatError", new { message = "消息发送失败" });
+        }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"处理聊天消息时出错: {ex.Message}");
-        PrintGroupPlayers(roomId);
+        Console.WriteLine($"发送聊天消息失败: {ex.Message}");
         await Clients.Caller.SendAsync("ChatError", new { message = ex.Message });
-        throw;
-    }
+    }           
 }
 
         // 接受客户端发送的绘图数据，并将数据广播给房间内的所有玩家

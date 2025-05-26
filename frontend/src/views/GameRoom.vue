@@ -79,9 +79,18 @@ export default {
       isGameActive: true,        // 游戏是否进行中
     };
   },
+  // 添加路由离开守卫
+  beforeRouteLeave(to, from, next) {
+    console.log('[GameRoom] 路由离开，准备断开SignalR连接');
+    this.disconnectSignalR();
+    next();
+  },
+  beforeDestroy() {
+    console.log('[GameRoom] 组件销毁，准备断开SignalR连接');
+    this.disconnectSignalR();
+  },
   mounted() {
     this.startTimer();
-    
     const roomId = this.$route.params.roomId;
     // 优先从 localStorage 获取 userId
     const playerId = parseInt(localStorage.getItem('userId')) || this.playerId;
@@ -111,6 +120,19 @@ export default {
     }
   },
   methods: {
+    // 断开SignalR连接的方法
+    disconnectSignalR() {
+      if (signalRService.hubConnection && signalRService.isConnected.value) {
+        signalRService.hubConnection.stop()
+          .then(() => {
+            signalRService.isConnected.value = false;
+            console.log('[GameRoom] SignalR连接已断开');
+          })
+          .catch(err => {
+            console.error('[GameRoom] 断开SignalR连接失败:', err);
+          });
+      }
+    },
     // 格式化时间
     formatTime(sec) {
       const m = String(Math.floor(sec / 60)).padStart(2, '0');

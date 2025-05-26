@@ -46,8 +46,11 @@ using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
 using backend.Models;
+using backend.Runtime;
 var builder = WebApplication.CreateBuilder(args);
 
+//GameRoomRuntimeManager注册为 Singleton
+builder.Services.AddSingleton<GameRoomRuntimeManager>();
 // 添加数据库上下文
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<OurDbContext>(options =>
