@@ -405,7 +405,7 @@ export default {
             this.undoneStrokes = []
             this.$emit('canvas-cleared')
             // 同步到后端
-            signalRService.sendClear(1); //传入房间号
+            signalRService.sendClear(); //传入房间号
         },
 
         undo() {
@@ -416,7 +416,7 @@ export default {
             this.redrawCanvas()
             this.$emit('stroke-undone')
             // 同步到后端
-            signalRService.sendUndo(1); //传入房间号
+            signalRService.sendUndo(); //传入房间号
         },
 
         redo() {
@@ -427,7 +427,7 @@ export default {
             this.redrawCanvas()
             this.$emit('stroke-redone')
             // 同步到后端
-            signalRService.sendRedo(1); //传入房间号
+            signalRService.sendRedo(); //传入房间号
         },
 
         setBrushPreset(preset) {

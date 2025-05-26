@@ -105,6 +105,8 @@
 <script>
 import DrawingBoard from '@/components/game/DrawingBoard.vue';
 import Chat from '@/components/gameRoom/Chat.vue';
+import signalRService from '@/services/signalRService';
+import apiService from '@/services/apiService'; // 确保你已经引入了 apiService
 
 export default {
   name: 'GameRoom',
@@ -112,10 +114,16 @@ export default {
     DrawingBoard,
     Chat
   },
+  props: {
+    playerId: {
+      type: Number,
+      required: false
+    }
+  },
   data() {
     return {
       currentRound: 1,
-      currentPainter: 'Alice',
+      currentPainter: '',
       players: [],
       currentPainterId: null,
       timer: 60,
@@ -131,7 +139,6 @@ export default {
         { text: '彩虹', difficulty: 3 },
         { text: '飞机', difficulty: 2 }
       ],
-      // 绘画工具相关
       currentTool: 'pen',
       currentColor: '#000000',
       currentSize: 5,
@@ -144,12 +151,10 @@ export default {
     };
   },
   computed: {
-    // 为猜词者显示词汇提示（部分字符用下划线代替）
     getWordHint() {
       return (word) => {
         if (!word) return '';
         return word.split('').map((char, index) => {
-          // 显示第一个和最后一个字符，中间用下划线
           if (index === 0 || index === word.length - 1) {
             return char;
           }
@@ -162,43 +167,84 @@ export default {
     }
   },
   mounted() {
-    this.initializeGame();
+    this.startTimer();
+    //this.initializeGame();
+    this.setupSignalR();
   },
-  async mounted() {
-    await this.fetchRoomPlayers();
+  beforeDestroy() {
+    console.log('[GameRoom] 组件销毁，准备断开SignalR连接');
+    this.disconnectSignalR();
+  },
+  beforeRouteLeave(to, from, next) {
+    console.log('[GameRoom] 路由离开，准备断开SignalR连接');
+    this.disconnectSignalR();
+    next();
   },
   methods: {
-    // 初始化游戏
     initializeGame() {
+      const localPlayerId = parseInt(localStorage.getItem('userId')) || this.playerId;
+      this.isPainter = this.currentPainterId === localPlayerId;
+
       if (this.isPainter) {
         this.showWordSelectionModal();
       } else {
         this.startTimer();
       }
     },
+    setupSignalR() {
+      const roomId = this.$route.params.roomId;
+      const playerId = parseInt(localStorage.getItem('userId')) || this.playerId;
+
+      if (!roomId || !playerId) {
+        console.error('[SignalR] 房间ID或玩家ID缺失');
+        this.$router.push('/lobby');
+        return;
+      }
+
+      signalRService.initialize(roomId).then(() => {
+        signalRService.joinGroup(roomId, playerId)
+          .then(() => {
+            console.log(`[SignalR] 加入房间: ${roomId}, 玩家ID: ${playerId}`);
+            this.fetchRoomPlayers();
+          })
+          .catch(err => {
+            console.error(`[SignalR] 加入房间失败: ${err.message}`);
+            this.$router.push('/lobby');
+          });
+      });
+    },
     async fetchRoomPlayers() {
       try {
         const roomId = this.$route.params.roomId;
         const res = await apiService.getRoomDetails(roomId);
         if (res && res.room && res.room.players) {
-          this.players = res.room.players.map(p => p.user); // 假设后端结构为 room.players[{user:{...}, isHost:...}]
-          // 你可以根据后端返回的数据结构调整
-          // 假设后端有 currentPainterId 字段
-          this.currentPainterId = res.room.currentPainterId || (this.players[0] && this.players[0].id);
+          this.players = res.room.players.map(p => p.user);
+          this.currentPainterId = res.room.currentPainterId || this.players[0]?.id || null;
+          // 关键：获取到玩家和画家后再初始化游戏
+          this.initializeGame();
         }
       } catch (e) {
         console.error('获取玩家列表失败', e);
       }
     },
-    // 显示选词弹窗
+    disconnectSignalR() {
+      if (signalRService.hubConnection && signalRService.isConnected.value) {
+        signalRService.hubConnection.stop()
+          .then(() => {
+            signalRService.isConnected.value = false;
+            console.log('[GameRoom] SignalR连接已断开');
+          })
+          .catch(err => {
+            console.error('[GameRoom] SignalR断开失败:', err);
+          });
+      }
+    },
     showWordSelectionModal() {
       this.showWordSelection = true;
       this.selectionTimer = 15;
       this.selectionProgress = 100;
       this.startSelectionTimer();
     },
-
-    // 选词倒计时
     startSelectionTimer() {
       const interval = setInterval(() => {
         this.selectionTimer--;
@@ -206,48 +252,38 @@ export default {
 
         if (this.selectionTimer <= 0) {
           clearInterval(interval);
-          // 时间到自动选择第一个词
           this.selectWord(this.wordOptions[0]);
         }
       }, 1000);
     },
-
-    // 选择词汇
-    selectWord(selectedWord) {
-      this.targetWord = selectedWord.text;
+    selectWord(word) {
+      this.targetWord = word.text;
       this.showWordSelection = false;
       this.isGameActive = true;
       this.timer = 60;
       this.startTimer();
 
-      // 这里可以通过SignalR通知其他玩家开始游戏
-      console.log('画家选择了词汇:', selectedWord.text);
+      console.log('画家选择了词汇:', word.text);
     },
-
-    // 格式化时间
     formatTime(sec) {
       const m = String(Math.floor(sec / 60)).padStart(2, '0');
       const s = String(sec % 60).padStart(2, '0');
       return `${m}:${s}`;
     },
-
-    // 处理猜对事件
     handleCorrectGuess() {
       this.isGameActive = false;
       this.currentRound++;
       this.resetGame();
 
-      // 切换画师
-      this.currentPainter = this.currentPainter === 'Alice' ? 'Bob' : 'Alice';
-      this.isPainter = !this.isPainter;
+      const localPlayerId = parseInt(localStorage.getItem('userId')) || this.playerId;
+      const nextPainterIndex = (this.players.findIndex(p => p.id === this.currentPainterId) + 1) % this.players.length;
+      this.currentPainterId = this.players[nextPainterIndex].id;
+      this.isPainter = this.currentPainterId === localPlayerId;
 
-      // 重新开始选词流程
       setTimeout(() => {
         this.initializeGame();
       }, 2000);
     },
-
-    // 启动游戏倒计时
     startTimer() {
       const timerInterval = setInterval(() => {
         if (this.isGameActive && this.timer > 0) {
@@ -261,56 +297,16 @@ export default {
         }
       }, 1000);
     },
-
-    // 时间到处理
     handleTimeUp() {
       console.log('时间到！');
-      // 处理倒计时结束逻辑
-      this.handleCorrectGuess(); // 可以调用相同的逻辑进入下一轮
+      this.handleCorrectGuess();
     },
-
-    // 重置游戏状态
     resetGame() {
       if (this.$refs.drawingBoard && this.$refs.drawingBoard.clearCanvas) {
         this.$refs.drawingBoard.clearCanvas();
       }
       this.targetWord = '';
-    },
-
-    // 绘画工具相关方法
-    selectTool(tool) {
-      this.currentTool = tool;
-      console.log('选择工具:', tool);
-    },
-
-    selectColor(color) {
-      this.currentColor = color;
-      console.log('选择颜色:', color);
-    },
-
-    selectSize(size) {
-      this.currentSize = size;
-      console.log('选择画笔大小:', size);
-    },
-
-    clearCanvas() {
-      if (this.$refs.drawingBoard && this.$refs.drawingBoard.clearCanvas) {
-        this.$refs.drawingBoard.clearCanvas();
-      }
-    },
-
-    // 绘图相关事件处理
-    onStrokeCompleted(stroke) {
-      console.log('在GameRoom.vue的onStrokeCompleted函数中收到笔画:', stroke);
-
-      if (!this.isPainter || !stroke) return;
-
-      console.log('在GameRoom.vue的onStrokeCompleted中开始调用SignalR发送消息');
-      // 通过signalR发送消息到后端
-    },
-
-    onCanvasCleared() {
-      console.log('画布已清空');
+      this.timer = 60;
     }
   }
 };

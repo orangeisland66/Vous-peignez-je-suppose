@@ -28,7 +28,7 @@
                         <span class="timestamp">{{ formatTime(message.timestamp) }}</span>
                     </div>
                     <div class="message-content">
-                        <span class="content">{{ message.content }}</span>
+                        <span class="content"> {{ message.isCorrect ? '***' : message.content }}</span>
                         <div v-if="message.isSystem" class="system-icon">
                             <i class="fas fa-info-circle"></i>
                         </div>
@@ -120,7 +120,9 @@ const maxMessageLength = 50;
 const lastMessageTime = ref(0);
 // const messageCooldown = 10; // 0.1秒冷却时间
 const isSending = ref(false);
-
+onMounted(() => {
+    clearMessages(); // 调用清空方法
+});
 // 计算属性：判断是否可以发送消息
 const canSendMessage = computed(() => {
     return newMessage.value.trim().length > 0 && 
@@ -151,6 +153,7 @@ const sendMessage = async () => {
   
     isSending.value = true; // 开始发送，禁用按钮
     await signalRService.sendChatMessage(message);
+    // await signalRService.joinGroup("7ZX3YHE2", 1);
     newMessage.value = '';
     lastMessageTime.value = Date.now();
   } catch (error) {
@@ -175,9 +178,9 @@ const scrollToBottom = () => {
 
 // 清空消息列表
 const clearMessages = () => {
-    messages.value = [];
+    messages.value = []; // 清空消息数组
+    console.log('[Chat] 聊天消息已清空');
 };
-
 // 清空输入框内容
 const clearInput = () => {
     newMessage.value = '';
@@ -226,7 +229,7 @@ const closeEmojiPicker = (e) => {
 onMounted(async () => {
     document.addEventListener('click', closeEmojiPicker);
     // 调用 initialize 方法
-    await signalRService.initialize(route.params.roomId);
+    // await signalRService.initialize(route.params.roomId);
 });
 
 onBeforeUnmount(() => {

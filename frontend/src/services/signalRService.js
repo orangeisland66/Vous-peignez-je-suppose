@@ -1,4 +1,3 @@
-
 // 默认连接到房间1！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
 //！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
 // src/services/signalRService.js
@@ -50,7 +49,7 @@ class SignalRService {
   }
 
   // 初始化并启动连接
-  async initialize(roomId = 1) { // 默认为房间1
+  async initialize(roomId) { // 默认为房间1
     this.currentRoomId.value = roomId;
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`/gameHub?roomId=${roomId}`)
@@ -60,7 +59,7 @@ class SignalRService {
     // 注册接收消息的处理函数
     this.hubConnection.on('ReceiveChatMessage', (data) => {
       console.log('接收到消息:', data);
-      
+       console.log(this.chatMessages.value);
       // 验证数据格式
       if (!data || !data.content) {
         console.error('无效的消息格式:', data);
@@ -68,7 +67,7 @@ class SignalRService {
       }
       
       // 使用不可变方式更新数组（确保 Vue 检测到变化）
-      this.chatMessages.value = [
+         this.chatMessages.value = [
         ...this.chatMessages.value,
         {
           playerId: data.playerId || 0,
@@ -76,11 +75,13 @@ class SignalRService {
           content: data.content,  // 关键：使用 content 字段
           timestamp: data.timestamp || new Date().toISOString(),
           isSystem: false,
-          isCorrect: false,
-          isWrong: false
+          isCorrect: data.isCorrect || false, // 默认值为 false
+          isWrong: false,
+          scores: data.scores || []
         }
       ];
     });
+   
 
     // 注册接受绘画数据的处理函数
     /*********************************/
@@ -159,10 +160,21 @@ class SignalRService {
       console.log('SignalR 连接已断开');
     });
 
-    this.hubConnection.onreconnected(() => {
+    this.hubConnection.onreconnected(async () => {
       this.isConnected.value = true;
       this.connectionId.value = this.hubConnection.connectionId;
       console.log('SignalR 连接已重新建立');
+      // 关键：重连后自动重新加入组
+      if (this.currentRoomId.value && this._lastPlayerIdForJoin) {
+        try {
+          console.log(this.currentRoomId.value);
+          console.log(this._lastPlayerIdForJoin);
+          await this.joinGroup(this.currentRoomId.value, this._lastPlayerIdForJoin);
+          console.log('SignalR 重连后已自动重新加入组');
+        } catch (e) {
+          console.warn('SignalR 重连后自动加入组失败:', e);
+        }
+      }
     });
 
     this.hubConnection.onreconnecting((error) => {
@@ -174,6 +186,19 @@ class SignalRService {
       await this.hubConnection.start();
       this.isConnected.value = true;
       this.connectionId.value = this.hubConnection.connectionId;
+      console.log('SignalR 连接已重新建立');
+      // 关键：重连后自动重新加入组
+       console.log(this.currentRoomId.value);
+      console.log(this._lastPlayerIdForJoin);
+      if (this.currentRoomId.value && this._lastPlayerIdForJoin) {
+        try {
+         
+          await this.joinGroup(this.currentRoomId.value, this._lastPlayerIdForJoin);
+          console.log('SignalR 重连后已自动重新加入组');
+        } catch (e) {
+          console.warn('SignalR 重连后自动加入组失败:', e);
+        }
+      }
       console.log(`SignalR 已连接到房间 ${roomId}`);
       return true;
     } catch (error) {
@@ -201,6 +226,29 @@ class SignalRService {
         return false;
     }
   }
+
+  // 加入SignalR组（房间），需要在连接建立后调用
+  async joinGroup(groupId, playerId) {
+    if (!this.isConnected.value || !this.hubConnection) {
+      console.error('SignalR 连接未建立，无法加入组');
+      return false;
+    }
+    try {
+      // 先建立连接映射
+      await this.hubConnection.invoke('AddToConnectionMap', this.hubConnection.connectionId, playerId);
+      // 再加入房间
+      await this.hubConnection.invoke('JoinRoom', groupId, playerId);
+      // 记录最后一次加入组的playerId，便于重连后自动恢复
+      this._lastPlayerIdForJoin = playerId;
+      console.log('SignalR 连接已加入组:', this._lastPlayerIdForJoin);
+      console.log(`已加入SignalR组: ${groupId}, 玩家ID: ${playerId}`);
+      return true;
+    } catch (error) {
+      console.error('加入SignalR组失败:', error);
+      return false;
+    }
+  }
+
   // 断开连接
   async disconnect() {
     if (this.hubConnection) {
@@ -238,7 +286,7 @@ class SignalRService {
   }
 
   // 发送撤销操作
-  async sendUndo(roomId) {
+  async sendUndo() {
     // 调试信息
     console.log('现在在signalRService的sendUndo方法中,正在发送撤销操作');
     
@@ -258,7 +306,7 @@ class SignalRService {
   }
 
   // 发送重做操作
-  async sendRedo(roomId) {
+  async sendRedo() {
     // 调试信息
     console.log('现在在signalRService的sendRedo方法中，正在发送重做操作');
 
@@ -278,7 +326,7 @@ class SignalRService {
   }
 
   // 发送清空画布操作
-  async sendClear(roomId){
+  async sendClear(){
     // 调试信息
     console.log('现在在signalRService的sendClear方法中，正在发送清空画布操作');
 
@@ -301,4 +349,5 @@ class SignalRService {
 
 // 创建单例实例
 const signalRService = new SignalRService();
+
 export default signalRService;

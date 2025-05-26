@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using backend.Data;
 
@@ -11,9 +12,11 @@ using backend.Data;
 namespace backend.Migrations
 {
     [DbContext(typeof(OurDbContext))]
-    partial class OurDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250525171648_changeChatMessage")]
+    partial class changeChatMessage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,44 +24,6 @@ namespace backend.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
-
-            modelBuilder.Entity("backend.Models.ActiveGameState", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CurrentGamePhase")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("CurrentPainterUserId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CurrentRound")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CurrentTargetWord")
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("GameRoomId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PlayerScoresJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("TotalRounds")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GameRoomId")
-                        .IsUnique();
-
-                    b.ToTable("ActiveGameStates");
-                });
 
             modelBuilder.Entity("backend.Models.ChatMessage", b =>
                 {
@@ -75,9 +40,6 @@ namespace backend.Migrations
                     b.Property<string>("GameRoomId")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
-
-                    b.Property<bool>("IsCorrect")
-                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("SenderId")
                         .HasColumnType("int");
@@ -470,17 +432,6 @@ namespace backend.Migrations
                     b.ToTable("Words");
                 });
 
-            modelBuilder.Entity("backend.Models.ActiveGameState", b =>
-                {
-                    b.HasOne("backend.Models.GameRoom", "GameRoom")
-                        .WithOne("ActiveState")
-                        .HasForeignKey("backend.Models.ActiveGameState", "GameRoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("GameRoom");
-                });
-
             modelBuilder.Entity("backend.Models.ChatMessage", b =>
                 {
                     b.HasOne("backend.Models.GameRoom", "GameRoom")
@@ -659,8 +610,6 @@ namespace backend.Migrations
 
             modelBuilder.Entity("backend.Models.GameRoom", b =>
                 {
-                    b.Navigation("ActiveState");
-
                     b.Navigation("ChatHistory");
 
                     b.Navigation("Players");

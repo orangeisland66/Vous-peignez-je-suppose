@@ -6,16 +6,21 @@ using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.Data;
 using backend.Services;
+using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
+using backend.Hubs;             
 
 namespace backend.Services
 {
     public class GameRoomService
     {
         private readonly OurDbContext _context;
+        private readonly IHubContext<GameHub> _hubContext; // <--- 新增字段
 
-        public GameRoomService(OurDbContext context)
+        public GameRoomService(OurDbContext context, IHubContext<GameHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext; 
         }
 
         /// <summary>
@@ -115,6 +120,7 @@ namespace backend.Services
                 .Include(gr => gr.Creator)      // 加载房间的创建者 (User)
                 .Include(gr => gr.Players)      // 加载房间内的所有玩家
                     .ThenInclude(p => p.User)   // 对于每个玩家，加载其关联的 User 信息
+                .Include(gr => gr.ActiveState) // <--- 新增这一行来加载活动游戏状态
                                                 // .Include(gr => gr.ChatHistory) // 根据需要加载
                 .FirstOrDefaultAsync(gr => gr.RoomId == roomIdString); // 条件是自定义的 RoomId 字符串
         }
@@ -145,9 +151,9 @@ namespace backend.Services
             //确保不是重复加入
             if (gameRoom.Players.Any(p => p.UserId.ToString() == userId))
             {
-                return true;
+                return false;
             }
- 
+
             // 加载用户
             var user = await _context.Users.FindAsync(int.Parse(userId));
 
@@ -287,6 +293,198 @@ namespace backend.Services
             gameRoom.Players.Remove(playerToRemove);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<ServiceResponse> StartGameByRoomIdStringAsync(string roomIdString, int requestingUserId)
+        {
+            // 1. 查找房间，同时加载玩家信息以便进行权限验证
+            var room = await _context.GameRooms 
+                                     .Include(r => r.Players) // 加载房间内的所有 Player 记录
+                                     .ThenInclude(p => p.User) // 对于每个 Player，加载其关联的 User 信息
+                                     .FirstOrDefaultAsync(r => r.RoomId == roomIdString);
+
+            if (room == null)
+            {
+                return new ServiceResponse { Success = false, Message = $"房间 '{roomIdString}' 不存在。" };
+            }
+
+            // 2. 检查房间当前状态
+            if (room.Status != RoomStatus.Waiting)
+            {
+                string statusMessage = room.Status switch
+                {
+                    RoomStatus.Playing => "游戏已经进行中。",
+                    RoomStatus.Completed => "游戏已结束，无法重新开始。",
+                    RoomStatus.Closed => "房间已关闭。",
+                    _ => "房间当前状态不允许开始游戏。"
+                };
+                return new ServiceResponse { Success = false, Message = statusMessage };
+            }
+
+            // 3. 权限验证：检查发起请求的用户是否为房主
+            var hostPlayerRecord = room.Players.FirstOrDefault(p => p.IsHost);
+            if (hostPlayerRecord == null || hostPlayerRecord.User == null || hostPlayerRecord.User.Id != requestingUserId)
+            {
+                // 如果找不到房主记录，或者房主记录没有关联用户，或者关联用户的ID与请求者ID不符
+                return new ServiceResponse { Success = false, Message = "只有房主才能开始游戏。" };
+            }
+
+            // 4. (可选) 检查其他条件，例如最小玩家数
+            if (room.Players.Count < 2)
+            {
+                return new ServiceResponse { Success = false, Message = "玩家人数不足（至少需要2人），无法开始游戏。" };
+            }
+
+            // 5. 更新游戏状态
+            room.Status = RoomStatus.Playing; // 将状态设置为进行中
+
+            // 1. 创建并初始化 ActiveGameState
+            var activeGameState = new ActiveGameState
+            {
+                GameRoomId = room.Id, // 关联到当前 GameRoom 的主键 Id
+                TotalRounds = room.Rounds, // 使用 GameRoom 配置的回合数作为总轮数
+                                           // 或者根据玩家人数: room.Players.Count; (你需要决定哪个优先)
+                CurrentRound = 0, // 将在 StartNewRound (我们稍后会创建的方法) 中设为 1
+                CurrentGamePhase = GamePhase.NotStarted, // 将在 StartNewRound 中更新
+                PlayerScoresJson = JsonSerializer.Serialize(new Dictionary<int, int>()) // 初始化空得分
+                // CurrentPainterUserId 和 CurrentTargetWord 将在 StartNewRound 中设置
+            };
+            // 将 ActiveGameState 添加到上下文并准备保存
+            _context.ActiveGameStates.Add(activeGameState);
+
+            //将 ActiveGameState 实例关联回 GameRoom 实体
+            // 这样如果后续立即访问 room.ActiveState，它不是 null (尽管EF Core在下次查询时会填充它)
+            room.ActiveState = activeGameState;
+            
+            try
+            {
+                //_context.GameRooms.Update(room); // 标记实体为已修改 (对于跟踪的实体，EF Core 通常会自动检测变化)
+                await _context.SaveChangesAsync(); // 保存更改到数据库
+                // TODO: 在这里调用一个方法来开始游戏的第一轮逻辑, 例如:
+                await StartFirstRoundAsync(activeGameState, room.Players);
+                // 这个方法会负责选择第一个画师，生成选词等，并通过SignalR通知客户端。
+                // 我们将在下一步实现这个游戏逻辑的起点。
+                return new ServiceResponse { Success = true, Message = "游戏已成功开始。" };
+            }
+            catch (DbUpdateException ex) // 更具体的异常捕获
+            {
+                // 记录详细错误，包括内部异常
+                Console.WriteLine($"Error starting game (DbUpdateException) (RoomIdString: {roomIdString}): {ex.ToString()}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.ToString()}");
+                }
+                return new ServiceResponse { Success = false, Message = "开始游戏时发生数据库错误，请稍后重试。" };
+            }
+            catch (Exception ex)
+            {
+                // 在实际应用中，这里应该使用更完善的日志记录机制
+                Console.WriteLine($"Error starting game (RoomIdString: {roomIdString}): {ex.ToString()}");
+                return new ServiceResponse { Success = false, Message = "开始游戏时发生数据库错误，请稍后重试。" };
+            }
+        }
+
+        private async Task StartFirstRoundAsync(ActiveGameState activeGameState, List<Player> playersInRoom)
+        {
+            // TODO: 实现开始第一轮的逻辑
+            // 1. 验证 activeGameState 和 playersInRoom 是否有效
+            if (activeGameState == null || playersInRoom == null || !playersInRoom.Any())
+            {
+                Console.WriteLine($"[StartFirstRoundAsync] Error: Invalid activeGameState or no players in room (GameRoomId: {activeGameState?.GameRoomId}).");
+                // 可能需要记录更详细的错误或抛出异常
+                return;
+            }
+
+            // 2. 设置当前回合为第一回合
+            activeGameState.CurrentRound = 1;
+
+            // 3. 选择第一个画师 (简单示例：选择列表中的第一个玩家)
+            //    在实际应用中，你可能需要更复杂的逻辑，例如随机选择或按顺序轮流
+            var firstPainter = playersInRoom.FirstOrDefault();
+            if (firstPainter?.User == null) // 确保玩家及其关联的 User 对象存在
+            {
+                Console.WriteLine($"[StartFirstRoundAsync] Error: Could not determine the first painter (GameRoomId: {activeGameState.GameRoomId}).");
+                activeGameState.CurrentGamePhase = GamePhase.GameOver; // 或者一个错误状态
+                await _context.SaveChangesAsync();
+                return;
+            }
+            activeGameState.CurrentPainterUserId = firstPainter.User.Id;
+
+            // 4. (模拟) 为画师生成词语选项 (我们稍后会从词库获取)
+            activeGameState.WordChoicesForPainter = new List<string> { "苹果", "香蕉", "太阳", "月亮" }; // 示例词语
+
+            // 5. 设置游戏阶段为等待画师选词
+            activeGameState.CurrentGamePhase = GamePhase.WaitingForPainterToChooseWord;
+
+            // 6. 保存对 activeGameState 的更改
+            try
+            {
+                // _context.ActiveGameStates.Update(activeGameState); // EF Core 会跟踪已加载实体的变化
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"[StartFirstRoundAsync] First round initialized for GameRoomId: {activeGameState.GameRoomId}. Painter: {firstPainter.User.Username}. Phase: {activeGameState.CurrentGamePhase}");
+
+                // 7. 通过 SignalR 通知客户端游戏状态已更新
+                try
+                {
+                    // 获取与 ActiveGameState 关联的 GameRoom 的字符串 RoomId (用于 SignalR 组名)
+                    var gameRoom = await _context.GameRooms.FindAsync(activeGameState.GameRoomId);
+                    if (gameRoom == null || string.IsNullOrEmpty(gameRoom.RoomId))
+                    {
+                        Console.WriteLine($"[StartFirstRoundAsync] Error: Could not find GameRoom or RoomId for ActiveGameStateId: {activeGameState.Id} to send SignalR message.");
+                        return;
+                    }
+
+                    // 准备要发送给客户端的游戏状态数据
+                    // 你可能需要创建一个 DTO (Data Transfer Object) 来精确控制发送给客户端的数据结构
+                    // 为了简单起见，我们直接发送 ActiveGameState，但要注意 WordChoicesForPainter 只应发送给画师
+                    var gameStateForClients = new
+                    {
+                        activeGameState.CurrentRound,
+                        activeGameState.TotalRounds,
+                        activeGameState.CurrentPainterUserId,
+                        // CurrentTargetWord 此时应该是 null 或空，因为画师还没选
+                        activeGameState.CurrentGamePhase,
+                        // PlayerScoresJson 可以发送，前端可以解析显示
+                        activeGameState.PlayerScoresJson,
+                        // WordChoicesForPainter 需要特殊处理
+                    };
+
+                    // 向房间内的所有客户端广播游戏状态更新
+                    // 前端需要监听 "GameStateUpdated" 事件
+                    await _hubContext.Clients.Group(gameRoom.RoomId).SendAsync("GameStateUpdated", gameStateForClients);
+                    Console.WriteLine($"[SignalR] Sent 'GameStateUpdated' to group: {gameRoom.RoomId}");
+
+                    // 单独向画师发送可选的词语列表
+                    if (activeGameState.CurrentPainterUserId.HasValue)
+                    {
+                        // 我们需要找到画师的 ConnectionId。这通常在 GameHub 的 JoinRoom 时映射。
+                        // 从服务层直接获取 ConnectionId 比较困难，通常 Hub 层更适合处理这种针对特定连接的消息。
+                        // 方案1: Hub 在 JoinRoom 时将 UserId -> ConnectionId 映射存储起来，服务层查询这个映射 (需要共享存储或服务)。
+                        // 方案2: 服务层触发一个事件，Hub 监听并处理。
+                        // 方案3 (更常见): Hub 层调用服务层方法后，Hub 层自己负责发送这些特定消息。
+                        // 方案4 (简单但不完美): 广播词语列表，前端画师客户端根据 isPainter 决定是否处理。
+                        //
+                        // 为了简单起见，我们暂时也广播给整个组，前端画师根据 isPainter 标志来显示词语选择。
+                        // 或者，我们可以定义一个特定的消息只包含词语选项，由画师客户端监听。
+                        // 例如:
+                        await _hubContext.Clients.Group(gameRoom.RoomId).SendAsync("WordChoicesAvailable", new
+                        {
+                            PainterUserId = activeGameState.CurrentPainterUserId,
+                            Choices = activeGameState.WordChoicesForPainter
+                        });
+                        Console.WriteLine($"[SignalR] Sent 'WordChoicesAvailable' to group: {gameRoom.RoomId} for painter: {activeGameState.CurrentPainterUserId}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[StartFirstRoundAsync] Error sending SignalR messages for GameRoomId: {activeGameState.GameRoomId}. Exception: {ex.ToString()}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[StartFirstRoundAsync] Error saving state or notifying clients for GameRoomId: {activeGameState.GameRoomId}. Exception: {ex.ToString()}");
+                // 处理保存失败的情况
+            }
         }
 
         /// <summary>
@@ -465,11 +663,59 @@ namespace backend.Services
             await _context.SaveChangesAsync();
             return true;
         }
-            public class LeaveRoomResult
+        /// <summary>
+        /// 更新游戏房间信息
+        /// </summary>
+        /// <param name="roomData">要更新的游戏房间对象</param>
+        /// <returns>更新成功返回更新后的游戏房间对象，否则返回 null</returns>
+        public async Task<GameRoom?> UpdateRoomAsync(GameRoom roomData)
+        {
+            var existingRoom = await _context.GameRooms
+                .Include(gr => gr.Players)
+                .Include(gr => gr.ChatHistory)
+                .FirstOrDefaultAsync(gr => gr.Id == roomData.Id);
+
+            if (existingRoom == null)
+            {
+                return null;
+            }
+
+            // 更新房间的基本信息
+            existingRoom.Name = roomData.Name;
+            existingRoom.Status = roomData.Status;
+            existingRoom.GameMode = roomData.GameMode;
+            existingRoom.IsPrivate = roomData.IsPrivate;
+            existingRoom.RoomPassword = roomData.RoomPassword;
+            existingRoom.MaxPlayers = roomData.MaxPlayers;
+            existingRoom.Rounds = roomData.Rounds;
+            existingRoom.Categories = roomData.Categories;
+            existingRoom.GameConfig = roomData.GameConfig;
+
+            // 你可能还需要更新关联的玩家和聊天记录等信息，这里仅做简单示例
+            // 例如，如果你需要更新玩家列表，可以添加相应的逻辑
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return existingRoom;
+            }
+            catch (Exception ex)
+            {
+                // 在实际应用中，这里应该使用更完善的日志记录机制
+                Console.WriteLine($"Error updating game room (RoomId: {roomData.Id}): {ex.ToString()}");
+                return null;
+            }
+        }
+        public class LeaveRoomResult
         {
             public bool Success { get; set; }
             public string? Message { get; set; }
             public bool RoomDisbanded { get; set; } = false;
+        }
+        public class ServiceResponse // 请确保这个类只定义一次
+        {
+            public bool Success { get; set; }
+            public string? Message { get; set; }
         }
     }
 }
