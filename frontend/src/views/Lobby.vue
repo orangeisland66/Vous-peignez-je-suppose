@@ -61,7 +61,7 @@
                     </div>
                     <div class="capacity-text">人数:{{ room.players.length }}/{{ room.maxPlayers }}</div>
                   </div>
-                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId, user.userId, user)"
+                  <button v-if="room.players.length < room.maxPlayers" @click="joinRoom(room.roomId)"
                     class="join-btn">加入游戏</button>
                   <div v-else class="full-badge">房间已满</div>
                 </div>
@@ -96,7 +96,7 @@ export default {
         rooms.value = await res.json();
       } catch (e) {
         console.error(e);
-        this.$toast?.error('获取房间列表失败');
+        // this.$toast?.error 在 setup 中不可用，建议使用全局消息组件
       }
     };
 
@@ -115,7 +115,6 @@ export default {
       } catch (e) {
         console.error('获取用户信息失败:', e);
         user.value = null;
-        this.$toast?.error(e.message || '获取用户信息失败');
       }
     };
 
@@ -131,24 +130,21 @@ export default {
       router.push('/profile');
     };
 
-    const joinRoom = async (roomId, userId, user) => {
+    const joinRoom = async (roomId) => {
       try {
         console.log('Joining room with ID:', roomId);
-        console.log('User info:', user);
+        const userId = localStorage.getItem('userId');
+        const parsedUserId = parseInt(userId);
+        if (isNaN(parsedUserId)) throw new Error('Invalid user ID');
+
         const player = {
-          Username: user.username,
-          // UserId: user.id,
-          // GameRoom:null,
+          Username: user.value?.username || 'Guest',
           Score: 0,
           Status: 1,
-          // IsHost: false,
-          // HasDrawn: false,
-          // LeftAt: null,
-          // LastDrawingTime: null,
-          // HasGuessed: false,
           JoinedAt: new Date().toISOString()
         };
-        await store.dispatch('gameRoom/joinRoom', { roomId, userId, player: player });
+
+        await store.dispatch('gameRoom/joinRoom', { roomId, userId: parsedUserId, player });
         router.push(`/room/join/${roomId}`);
       } catch (error) {
         console.error('Failed to join room:', error);
@@ -170,7 +166,6 @@ export default {
 
         if (isNaN(currentUserId.value)) {
           console.error('Lobby.vue - Parsed userId is NaN. Redirecting to login.');
-          this.$toast?.error('用户ID无效，请重新登录');
           localStorage.removeItem('userId');
           router.push('/login');
           return;
@@ -180,7 +175,6 @@ export default {
         await fetchRooms();
       } else {
         console.error('Lobby.vue - userId not found in local storage. Redirecting to login.');
-        this.$toast?.error('未检测到登录用户，请重新登录');
         router.push('/login');
       }
     });
@@ -197,6 +191,8 @@ export default {
   }
 };
 </script>
+
+
 
 <style scoped>
 :root {
