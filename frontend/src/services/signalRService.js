@@ -286,7 +286,7 @@ class SignalRService {
   }
 
   // 发送撤销操作
-  async sendUndo(roomId) {
+  async sendUndo() {
     // 调试信息
     console.log('现在在signalRService的sendUndo方法中,正在发送撤销操作');
     
@@ -306,7 +306,7 @@ class SignalRService {
   }
 
   // 发送重做操作
-  async sendRedo(roomId) {
+  async sendRedo() {
     // 调试信息
     console.log('现在在signalRService的sendRedo方法中，正在发送重做操作');
 
@@ -326,7 +326,7 @@ class SignalRService {
   }
 
   // 发送清空画布操作
-  async sendClear(roomId){
+  async sendClear(){
     // 调试信息
     console.log('现在在signalRService的sendClear方法中，正在发送清空画布操作');
 
