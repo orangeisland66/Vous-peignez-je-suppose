@@ -410,8 +410,61 @@ namespace backend.Services
             }
             activeGameState.CurrentPainterUserId = firstPainter.User.Id;
 
-            // 4. (模拟) 为画师生成词语选项 (我们稍后会从词库获取)
-            activeGameState.WordChoicesForPainter = new List<string> { "苹果", "香蕉", "太阳", "月亮" }; // 示例词语
+            // 4. 为画师生成词语选项 (从数据库获取)
+            // 4.1 获取当前房间配置的词库分类
+            var gameRoomForCategories = await _context.GameRooms.FindAsync(activeGameState.GameRoomId);
+            if (gameRoomForCategories == null)
+            {
+                Console.WriteLine($"[StartFirstRoundAsync] 错误: 找不到 ID 为 {activeGameState.GameRoomId} 的 GameRoom 以获取分类信息。");
+                activeGameState.CurrentGamePhase = GamePhase.GameOver; // 或错误状态
+                activeGameState.WordChoicesForPainter = new List<string> { "错误", "词库", "无法", "加载" }; // 备用词
+                await _context.SaveChangesAsync();
+                return;
+            }
+            List<string> roomCategories = gameRoomForCategories.Categories;
+
+            if (roomCategories == null || !roomCategories.Any())
+            {
+                Console.WriteLine($"[StartFirstRoundAsync] 警告: 房间 {gameRoomForCategories.RoomId} 没有选择任何词库分类。使用默认备用词。");
+                activeGameState.WordChoicesForPainter = new List<string> { "默认A", "默认B", "默认C", "默认D" };
+            }
+            else
+            {
+                // 4.2 从数据库中根据分类随机抽取词语
+                // 确保你的 OurDbContext 中有 DbSet<Word> Words
+                var wordsQuery = _context.Words.Where(w => w.Category != null && roomCategories.Contains(w.Category));
+
+                // 首先统计符合条件的词语数量，以处理词语较少的情况
+                int availableWordsCount = await wordsQuery.CountAsync();
+                List<string> selectedWords;
+
+                if (availableWordsCount == 0)
+                {
+                    Console.WriteLine($"[StartFirstRoundAsync] 错误: 在房间 {gameRoomForCategories.RoomId} 中，找不到分类为 {string.Join(", ", roomCategories)} 的词语。使用备用词。");
+                    selectedWords = new List<string> { "无词A", "无词B", "无词C", "无词D" };
+                }
+                else
+                {
+                    // 如果可用词语少于4个，则全部选取；否则，随机选取4个。
+                    int wordsToTake = Math.Min(4, availableWordsCount);
+
+                    selectedWords = await wordsQuery
+                                            .OrderBy(w => Guid.NewGuid()) // 简单随机化方法，对于非常大的表可能性能不佳
+                                            .Take(wordsToTake)
+                                            .Select(w => w.Content) // 选择 Word 模型的 'Content' 属性
+                                            .Where(content => content != null) // 确保 Content 不为 null
+                                            .ToListAsync();
+                    
+                    // 如果选取后得到的词语列表为空（例如，所有匹配词的 Content 都为 null）
+                    if (!selectedWords.Any() && availableWordsCount > 0) {
+                        Console.WriteLine($"[StartFirstRoundAsync] 警告: 选取后词语列表为空 (可能所有 Content 都为 null)。房间: {gameRoomForCategories.RoomId}. 使用备用词。");
+                        selectedWords = new List<string> { "备用词1", "备用词2", "备用词3", "备用词4" };
+                    }
+
+                }
+                activeGameState.WordChoicesForPainter = selectedWords!; // 分配选取的词语（或备用词）
+            }
+
 
             // 5. 设置游戏阶段为等待画师选词
             activeGameState.CurrentGamePhase = GamePhase.WaitingForPainterToChooseWord;
@@ -421,7 +474,7 @@ namespace backend.Services
             {
                 // _context.ActiveGameStates.Update(activeGameState); // EF Core 会跟踪已加载实体的变化
                 await _context.SaveChangesAsync();
-                Console.WriteLine($"[StartFirstRoundAsync] First round initialized for GameRoomId: {activeGameState.GameRoomId}. Painter: {firstPainter.User.Username}. Phase: {activeGameState.CurrentGamePhase}");
+                Console.WriteLine($"[StartFirstRoundAsync] 第一轮已为 GameRoomId: {activeGameState.GameRoomId} 初始化。画师: {activeGameState.CurrentPainterUserId}。阶段: {activeGameState.CurrentGamePhase}。可选词语: {string.Join(", ", activeGameState.WordChoicesForPainter ?? new List<string>())}");
 
                 // 7. 通过 SignalR 通知客户端游戏状态已更新
                 try
@@ -445,7 +498,7 @@ namespace backend.Services
                         // CurrentTargetWord 此时应该是 null 或空，因为画师还没选
                         activeGameState.CurrentGamePhase,
                         // PlayerScoresJson 可以发送，前端可以解析显示
-                        activeGameState.PlayerScoresJson,
+                        //activeGameState.PlayerScoresJson,
                         // WordChoicesForPainter 需要特殊处理
                     };
 
