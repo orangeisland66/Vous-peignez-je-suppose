@@ -277,19 +277,19 @@ body {
 }
 
 /* 响应式布局优化 */
-@media (max-width: 1400px) {
+@media (max-width: 2048px) {
     .game-container {
         grid-template-columns: minmax(0, 1fr) 380px;
-        padding: var(--spacing-lg);
-        gap: var(--spacing-lg);
+        padding: var(--spacing-sm);
+        gap: var(--spacing-sm);
     }
 }
 
 @media (max-width: 1024px) {
     .game-container {
         grid-template-columns: minmax(0, 1fr) 320px;
-        padding: var(--spacing-md);
-        gap: var(--spacing-md);
+        padding: var(--spacing-sm);
+        gap: var(--spacing-sm);
     }
 }
 

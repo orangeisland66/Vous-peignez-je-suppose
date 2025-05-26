@@ -289,7 +289,8 @@ export default {
 
 /* Base Layout */
 .create-room-background {
-  background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
+  background-color: lightcyan;
+  /* background: linear-gradient(135deg, #59635d 0%, #5c6b6e 100%); */
   min-height: 100vh;
   width: 100vw;
   display: flex;
@@ -623,6 +624,14 @@ export default {
   transform: translateY(-3px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border-color: var(--primary-light);
+}
+
+.category-card.selected {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: black;
+  transform: scale(1.02);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
 }
 
 .category-icon {

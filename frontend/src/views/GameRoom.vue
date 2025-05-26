@@ -300,6 +300,9 @@ export default {
     handleTimeUp() {
       console.log('时间到！');
       this.handleCorrectGuess();
+      const roomId = this.$route.params.roomId;
+      this.$router.push({ name: 'RoundResult', params: { roomId } });
+      //this.$router.push({ name: 'FinalScore', params: { roomId: this.roomId } })
     },
     resetGame() {
       if (this.$refs.drawingBoard && this.$refs.drawingBoard.clearCanvas) {
@@ -332,18 +335,20 @@ export default {
 
 /* Base and Layout Styles */
 .game-background {
-  background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
+  /* background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%); */
   width: 100vw;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: var(--dark);
+  padding: 24px;
 }
 
 .game-container {
   width: 90%;
-  height: calc(100vh - 100px);
+  height: calc(100vh - 80px);
   max-width: 1400px;
   background: white;
   border-radius: 24px;
@@ -353,25 +358,42 @@ export default {
   flex-direction: column;
 }
 
-/* Header Styles */
+/* Header Layout */
 .header-info {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 20px;
   background: white;
   border-bottom: 1px solid var(--gray-light);
   flex-wrap: wrap;
 }
 
-.round-badge {
+/* 通用徽章统一大小 */
+.info-badge {
+  min-width: 160px;
+  height: 64px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  background: var(--primary-lightest);
+  justify-content: center;
   padding: 8px 16px;
   border-radius: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 当前回合 */
+.round-badge {
+  background: var(--primary-lightest);
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
+  flex-direction: column;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 160px;
+  height: 64px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  flex-shrink: 0;
 }
 
 .round-label {
@@ -386,28 +408,33 @@ export default {
   font-size: 16px;
 }
 
+/* 计时器 */
 .timer-badge {
   display: flex;
   align-items: center;
+  justify-content: center;
   background: #FEF2F2;
+  min-width: 160px;
+  height: 64px;
   padding: 8px 16px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .timer-icon {
-  font-size: 16px;
+  font-size: 20px;
   color: var(--danger);
 }
 
 .timer-text {
   font-weight: 600;
   color: var(--danger);
-  font-size: 16px;
+  font-size: 20px;
 }
 
-/* 玩家状态样式 */
+/* 玩家状态 */
 .players-status {
   display: flex;
   gap: 15px;
@@ -433,7 +460,7 @@ export default {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--primary);
+  background: var(--primary-dark);
   color: white;
   display: flex;
   align-items: center;
@@ -444,6 +471,7 @@ export default {
 
 .player-item.active .player-avatar {
   background: var(--primary-dark);
+  color: white;
 }
 
 .player-info {
@@ -467,17 +495,21 @@ export default {
   font-weight: 500;
 }
 
-/* 当前词汇显示样式 */
+/* 当前词汇 */
 .current-word-badge {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   background: linear-gradient(135deg, var(--secondary) 0%, #34D399 100%);
-  color: white;
-  padding: 10px 16px;
+  color: black;
+  padding: 8px 16px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  min-width: 160px;
+  height: 64px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .word-icon {
@@ -490,14 +522,14 @@ export default {
   gap: 2px;
 }
 
-.current-word-badge .word-label {
+.word-label {
   font-size: 12px;
   color: black;
   opacity: 0.9;
   font-weight: 600;
 }
 
-.current-word-badge .word-text {
+.word-text {
   font-size: 16px;
   font-weight: 600;
   opacity: 0.9;
@@ -509,7 +541,6 @@ export default {
 .main-content {
   display: flex;
   height: auto;
-  padding: 20px 20px;
   gap: 24px;
   flex: 1;
 }
