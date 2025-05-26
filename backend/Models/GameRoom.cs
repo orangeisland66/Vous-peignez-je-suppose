@@ -44,6 +44,10 @@ namespace backend.Models
         [MinLength(1, ErrorMessage = "请至少选择一个词库分类")] // 至少选择一个分类
         public List<string> Categories { get; set; }
 
+        // 新增: 导航到对应的活动游戏状态 (如果游戏正在进行)
+        // 一个 GameRoom 在某一时刻最多只有一个 ActiveGameState
+        public virtual ActiveGameState? ActiveState { get; set; } // 可空，因为房间可能不在游戏状态
+
             // **新增：创建者用户ID**
         public int CreatorId { get; set; }
         // **新增：导航属性到创建者用户 **
