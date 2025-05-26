@@ -2,7 +2,7 @@
     <div class="game-result">
         <div class="result-container">
             <h2 class="result-title">Game Over!</h2>
-            
+
             <!-- Correct Word Section -->
             <div class="word-section">
                 <h3>The word was:</h3>
@@ -93,7 +93,9 @@ export default {
     font-size: 28px;
 }
 
-.word-section, .winner-section, .scores-section {
+.word-section,
+.winner-section,
+.scores-section {
     margin-bottom: 24px;
 }
 

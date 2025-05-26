@@ -626,6 +626,14 @@ export default {
   border-color: var(--primary-light);
 }
 
+.category-card.selected {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: black;
+  transform: scale(1.02);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+}
+
 .category-icon {
   font-size: 28px;
   margin-bottom: 12px;
