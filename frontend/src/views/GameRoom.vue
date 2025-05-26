@@ -55,7 +55,7 @@
 <script>
 import DrawingBoard from '@/components/game/DrawingBoard.vue';
 import Chat from '@/components/gameRoom/Chat.vue';
-import signalRService from '@/services/signalRService.js'; // 引入 signalRService
+import signalRService from '@/services/signalRService'; // 引入 signalRService
 
 export default {
   name: 'GameRoom',
@@ -77,6 +77,7 @@ export default {
       targetWord: 'umbrella',   // 目标词语（实际从后端获取）
       isPainter: true,         // 是否为画师（需根据业务逻辑动态设置）
       isGameActive: true,        // 游戏是否进行中
+      players: [],              // 玩家列表（实际从后端获取）
     };
   },
   // 添加路由离开守卫
@@ -107,6 +108,8 @@ export default {
         signalRService.joinGroup(roomId, playerId)
           .then(() => {
             console.log(`[SignalR] 成功加入房间: ${roomId}, 玩家ID: ${playerId}`);
+            console.log("正在获取玩家列表...");
+            this.fetchPlayers(); // 获取玩家列表
           })
           .catch(err => {
             console.error(`[SignalR] 加入房间失败: ${err.message}`);
@@ -163,6 +166,17 @@ export default {
       } else if (this.timer === 0 && this.isGameActive) {
         this.isGameActive = false;
         // 处理倒计时结束逻辑（如平局、切换画师等）
+      }
+    },
+    async fetchPlayers() {
+      const roomId = this.$route.params.roomId;
+
+      try {
+        const playerNames = await signalRService.hubConnection.invoke("GetPlayerNames", roomId);
+        this.players = playerNames;
+        console.log('[GameRoom] 获取到玩家列表:', playerNames);
+      } catch (err) {
+        console.error('[GameRoom] 获取玩家列表失败:', err.message);
       }
     },
 
