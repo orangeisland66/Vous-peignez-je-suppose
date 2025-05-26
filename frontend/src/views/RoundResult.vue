@@ -16,7 +16,7 @@
           </div>
         </div>
         <div class="answer-display">
-          <span class="answer-label">正确答案</span>
+          <span class="answer-label">本轮正确答案</span>
           <div class="answer-badge">{{ correctWord }}</div>
         </div>
       </header>
@@ -27,16 +27,6 @@
         <section class="drawing-panel">
           <div class="panel-header">
             <h3>最终画作</h3>
-            <div class="drawing-actions">
-              <button class="action-btn save" @click="saveDrawing">
-                <span class="btn-icon">💾</span>
-                保存
-              </button>
-              <button class="action-btn share" @click="shareDrawing">
-                <span class="btn-icon">📤</span>
-                分享
-              </button>
-            </div>
           </div>
           <div class="canvas-container">
             <canvas ref="previewCanvas" class="preview-canvas"></canvas>
@@ -148,6 +138,8 @@
 </template>
 
 <script>
+import { HubConnectionBuilder } from '@microsoft/signalr'
+
 export default {
   name: 'RoundResult',
   data() {
@@ -162,7 +154,8 @@ export default {
       canProceed: false,
       countdown: 3,
       canvasLoaded: false,
-      sortBy: 'round' // 'round' or 'total'
+      sortBy: 'round',
+      connection: null
     }
   },
   computed: {
@@ -175,41 +168,78 @@ export default {
     }
   },
   async created() {
-    await this.loadResult()
+    await this.loadRoundInfo()
     this.startCountdown()
+    this.initSignalR()
   },
   mounted() {
     this.renderCanvas()
   },
+  beforeDestroy() {
+    if (this.connection) {
+      this.connection.stop()
+    }
+  },
   methods: {
-    async loadResult() {
+    async loadRoundInfo() {
       try {
         const res = await fetch(`/api/game/round/${this.roomId}/result`)
-        if (!res.ok) throw new Error('获取回合结果失败')
+        if (!res.ok) throw new Error('获取回合信息失败')
         const data = await res.json()
         this.currentRound = data.currentRound
         this.totalRounds = data.totalRounds
         this.correctWord = data.correctWord
-        this.players = data.players
         this.isHost = data.isHost
-        this.isLastRound = this.currentRound === this.totalRounds
+        this.isLastRound = data.currentRound === data.totalRounds
       } catch (error) {
-        console.error('Load result error:', error)
-        // Handle error appropriately
+        console.error('Load round info error:', error)
+      }
+    },
+    async fetchPlayers() {
+      try {
+        const res = await fetch(`/api/game/${this.roomId}/players`)
+        if (!res.ok) throw new Error('获取玩家列表失败')
+        this.players = await res.json()
+      } catch (error) {
+        console.error('Fetch players error:', error)
+      }
+    },
+    async initSignalR() {
+      this.connection = new HubConnectionBuilder()
+        .withUrl(`/hub/game?roomId=${this.roomId}`)
+        .withAutomaticReconnect()
+        .build()
+
+      this.connection.on('PlayersUpdated', updatedPlayers => {
+        this.players = updatedPlayers
+      })
+
+      this.connection.on('RoundUpdated', roundData => {
+        this.currentRound = roundData.currentRound
+        this.correctWord = roundData.correctWord
+      })
+
+      try {
+        await this.connection.start()
+        console.log('SignalR connected')
+        // 主动拉一次
+        await this.fetchPlayers()
+      } catch (err) {
+        console.error('SignalR connection error:', err)
+        // fallback: 轮询
+        this.polling = setInterval(this.fetchPlayers, 3000)
       }
     },
     renderCanvas() {
       const canvas = this.$refs.previewCanvas
       if (!canvas) return
-
       canvas.width = canvas.clientWidth
       canvas.height = canvas.clientHeight
       const ctx = canvas.getContext('2d')
 
-      // Simulate loading delay
+      // 模拟绘图加载
       setTimeout(() => {
-        // TODO: 从后端获取并渲染绘图数据
-        // Example: ctx.drawImage(...)
+        // TODO: 从后端拉取画布图像数据并渲染
         this.canvasLoaded = true
       }, 1500)
     },
@@ -242,18 +272,11 @@ export default {
         console.error('Leave error:', error)
         this.$router.push('/lobby')
       }
-    },
-    saveDrawing() {
-      // TODO: Implement save functionality
-      console.log('Save drawing')
-    },
-    shareDrawing() {
-      // TODO: Implement share functionality
-      console.log('Share drawing')
     }
   }
 }
 </script>
+
 
 <style scoped>
 :root {
@@ -301,14 +324,14 @@ export default {
 
 /* Header Styles */
 .result-header {
-  padding: 24px 32px;
+  padding: 24px 24px;
   background: white;
   border-bottom: 1px solid var(--gray-light);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 24px;
 }
 
 .round-info-container {
@@ -317,30 +340,35 @@ export default {
   gap: 12px;
 }
 
+/* 回合徽章样式统一改为圆角矩形，字体清晰 */
 .round-badge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   background: var(--primary-lightest);
-  padding: 8px 16px;
-  border-radius: 50px;
-  border: 2px solid var(--primary-light);
+  padding: 10px 20px;
+  border-radius: 16px;
+  border: 1.5px solid var(--primary-light);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.08);
 }
 
 .round-number {
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--primary);
 }
 
+/* 
 .round-status {
-  font-size: 0.9rem;
-  color: var(--gray);
+  font-size: 0.875rem;
+  color: var(--primary-dark);
   background: white;
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
-}
+  box-shadow: inset 0 0 0 1px var(--gray-light);
+} */
 
+/* 进度条组 */
 .game-progress {
   display: flex;
   align-items: center;
@@ -348,18 +376,18 @@ export default {
 }
 
 .progress-bar {
-  width: 120px;
-  height: 8px;
-  background: var(--gray-light);
-  border-radius: 4px;
+  width: 140px;
+  height: 10px;
+  background: var(--gray-lighter);
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: linear-gradient(to right, var(--primary), var(--primary-light));
-  border-radius: 4px;
-  transition: width 0.3s ease;
+  border-radius: 6px;
+  transition: width 0.4s ease;
 }
 
 .progress-text {
@@ -368,34 +396,36 @@ export default {
   font-weight: 500;
 }
 
+/* 答案显示 */
 .answer-display {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+  min-width: 180px;
 }
 
 .answer-label {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--gray);
   font-weight: 500;
 }
 
 .answer-badge {
-  background: linear-gradient(135deg, var(--success) 0%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--secondary), var(--success));
   color: white;
   padding: 12px 20px;
-  border-radius: 16px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+  border-radius: 8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 /* Main Content Layout */
 .main-content {
   display: flex;
   flex: 1;
-  padding: 24px;
+  padding: 0 24px;
   gap: 24px;
   overflow: hidden;
 }
@@ -443,7 +473,7 @@ export default {
   gap: 8px;
 }
 
-.action-btn {
+/* .action-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -462,14 +492,14 @@ export default {
 }
 
 .action-btn.share {
-  background: var(--secondary);
-  color: white;
-}
+  background: var(--primary-lightest);
+  color: var(--primary);
+} */
 
-.action-btn:hover {
+/* .action-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
+} */
 
 .btn-icon {
   font-size: 14px;
@@ -791,7 +821,7 @@ export default {
 
 /* Footer Styles */
 .result-actions {
-  padding: 24px 32px;
+  padding: 24px;
   background: var(--light);
   border-top: 1px solid var(--gray-light);
   display: flex;
@@ -803,13 +833,13 @@ export default {
 .countdown-display {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
   color: var(--gray);
 }
 
 .countdown-circle {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--primary-lightest);
   border: 2px solid var(--primary-light);
@@ -834,7 +864,7 @@ export default {
 }
 
 .countdown-number {
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--primary);
 }
