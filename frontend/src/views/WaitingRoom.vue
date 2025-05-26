@@ -27,10 +27,10 @@
               <div class="host-name">{{ hostPlayer?.username || '加载中...' }}</div>
             </div>
           </div>
-          
+
           <div class="action-cards">
             <!-- 判断当前用户是否为房主 -->
-            <button v-if="isCurrentUserHost" @click="startGame" class="action-card start">         
+            <button v-if="isCurrentUserHost" @click="startGame" class="action-card start">
               <div class="action-icon">▶</div>
               <span class="action-text">开始游戏</span>
             </button>
@@ -39,7 +39,7 @@
               <span class="action-text">返回大厅</span>
             </button>
           </div>
-          
+
           <div class="game-rules">
             <h3>游戏规则</h3>
             <ul>
@@ -55,17 +55,17 @@
         <section class="players-panel">
           <div class="panel-header">
             <h2>玩家列表</h2>
-           <!-- 显示真实玩家数量 -->
-            <span class="player-count">{{ actualPlayers.length }} 名玩家</span> 
+            <!-- 显示真实玩家数量 -->
+            <span class="player-count">{{ actualPlayers.length }} 名玩家</span>
           </div>
-          
+
           <div class="player-list-container">
             <div v-if="actualPlayers.length === 0 && !isLoading" class="no-players">
               <div class="empty-icon">👤</div>
               <p>暂无玩家，等待加入...</p> <!-- 或者你之前的 "暂无玩家" -->
             </div>
 
-            
+
             <ul v-else class="player-list">
               <!-- 遍历从后端获取的 players -->
               <li v-for="(player, index) in actualPlayers" :key="player.id" class="player-card">
@@ -100,17 +100,17 @@ import apiService from '@/services/apiService'
 
 export default {
   name: 'WaitingRoom',
- data() {
-  return {
-    room: null,
-    currentUser: null,
-    isLoading: true,
-    errorMessage: '',
-    pollInterval: null, // 轮询定时器
-    pollIntervalMs: 3000, // 轮询间隔（3秒）
-    isLoadingStartGame: false,
-  };
-},
+  data() {
+    return {
+      room: null,
+      currentUser: null,
+      isLoading: true,
+      errorMessage: '',
+      pollInterval: null, // 轮询定时器
+      pollIntervalMs: 3000, // 轮询间隔（3秒）
+      isLoadingStartGame: false,
+    };
+  },
   computed: {
     // 从路由参数获取房间的字符串ID
     roomIdFromRoute() {
@@ -142,88 +142,88 @@ export default {
     //   return this.room.host.id === this.user.id
     // }
   },
-    async created() {
-      console.log('[WaitingRoom] Created hook started.');
-      // 1. 获取当前登录用户信息
-      const userIdString = localStorage.getItem('userId');
-      const userName = localStorage.getItem('userName');
-      console.log(`[WaitingRoom] localStorage - userId: ${userIdString}, userName: ${userName}`);
-      if (userIdString && userName) {
-        this.currentUser = {
-          id: parseInt(userIdString),
-          userName: userName,
-        };
-      } else {
-        this.errorMessage = "用户未登录，请先登录。";
-        this.isLoading = false;
-        this.$router.push('/login'); // 跳转到登录页
-        return;
-      }
+  async created() {
+    console.log('[WaitingRoom] Created hook started.');
+    // 1. 获取当前登录用户信息
+    const userIdString = localStorage.getItem('userId');
+    const userName = localStorage.getItem('userName');
+    console.log(`[WaitingRoom] localStorage - userId: ${userIdString}, userName: ${userName}`);
+    if (userIdString && userName) {
+      this.currentUser = {
+        id: parseInt(userIdString),
+        userName: userName,
+      };
+    } else {
+      this.errorMessage = "用户未登录，请先登录。";
+      this.isLoading = false;
+      this.$router.push('/login'); // 跳转到登录页
+      return;
+    }
 
-      // 2. 检查路由中是否有 roomId
-      if (!this.roomIdFromRoute) {
-        this.errorMessage = "未找到房间ID，无法加载房间信息。";
-        this.isLoading = false;
-        // 可以考虑跳转回大厅或显示更友好的错误页
-        this.$router.push('/lobby');
-        return;
-      }
+    // 2. 检查路由中是否有 roomId
+    if (!this.roomIdFromRoute) {
+      this.errorMessage = "未找到房间ID，无法加载房间信息。";
+      this.isLoading = false;
+      // 可以考虑跳转回大厅或显示更友好的错误页
+      this.$router.push('/lobby');
+      return;
+    }
 
-      // 3. 调用 API 获取房间详情
-      await this.fetchRoomDetails();
+    // 3. 调用 API 获取房间详情
+    await this.fetchRoomDetails();
 
-      if (this.roomIdFromRoute && this.currentUser) {
+    if (this.roomIdFromRoute && this.currentUser) {
       this.startPolling();
-  }
+    }
   },
   beforeUnmount() {
-  this.stopPolling(); // 组件销毁时停止轮询
+    this.stopPolling(); // 组件销毁时停止轮询
   },
   // mounted() {
   //   // 为了测试，直接使用静态数据而不是从API获取
   //   console.log('WaitingRoom mounted, using mock data for testing')
   // },
   methods: {
-  startPolling() {
-    this.stopPolling(); // 防止重复启动
-    this.pollInterval = setInterval(() => {
-      this.fetchRoomDetails(false); // 轮询调用获取房间数据的方法
-    }, this.pollIntervalMs);
-  },
+    startPolling() {
+      this.stopPolling(); // 防止重复启动
+      this.pollInterval = setInterval(() => {
+        this.fetchRoomDetails(false); // 轮询调用获取房间数据的方法
+      }, this.pollIntervalMs);
+    },
 
-  stopPolling() {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
-  },
+    stopPolling() {
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+      }
+    },
 
-  async fetchRoomDetails(if_loading = true) {
-    this.isLoading = if_loading;
-    this.errorMessage = ''; // 重置错误信息
-    try {
-      console.log(`WaitingRoom: 正在获取房间 ${this.roomIdFromRoute} 的详细信息...`);
-      const response = await apiService.getRoomDetails(this.roomIdFromRoute);
-      console.log('WaitingRoom: 获取房间详情的响应:', response);
-      if (response && response.success && response.room) {
-        this.room = response.room;
-        console.log('WaitingRoom: 成功获取房间数据:', this.room);
-              // 检查游戏状态 (RoomStatus.Playing 在后端枚举中是 1)
-      if (this.room.status === 1) { // 1 代表游戏进行中
-        console.log('[WaitingRoom] Game has started (Status=1, detected via polling). Navigating to game page.');
-        this.stopPolling(); // 游戏开始，停止轮询
-        this.$router.push(`/room/${this.room.roomId}/game`); // 跳转到游戏页面
-        return; // 已跳转，无需进一步处理
-      }
-      // 可选：处理其他状态，例如房间关闭或游戏结束
-      else if (this.room.Status === 2 || this.room.Status === 3) { // 2: Completed, 3: Closed
-        const message = this.room.Status === 2 ? "游戏已结束。" : "房间已关闭。";
-        console.log(`[WaitingRoom] Room status is ${this.room.Status} (${message}). Navigating to lobby.`);
-        this.stopPolling();
-        alert(message); // 提示用户
-        this.$router.push('/lobby'); // 跳转回大厅
-        return;
-      }
+    async fetchRoomDetails(if_loading = true) {
+      this.isLoading = if_loading;
+      this.errorMessage = ''; // 重置错误信息
+      try {
+        console.log(`WaitingRoom: 正在获取房间 ${this.roomIdFromRoute} 的详细信息...`);
+        const response = await apiService.getRoomDetails(this.roomIdFromRoute);
+        console.log('WaitingRoom: 获取房间详情的响应:', response);
+        if (response && response.success && response.room) {
+          this.room = response.room;
+          console.log('WaitingRoom: 成功获取房间数据:', this.room);
+          // 检查游戏状态 (RoomStatus.Playing 在后端枚举中是 1)
+          if (this.room.status === 1) { // 1 代表游戏进行中
+            console.log('[WaitingRoom] Game has started (Status=1, detected via polling). Navigating to game page.');
+            this.stopPolling(); // 游戏开始，停止轮询
+            this.$router.push(`/room/${this.room.roomId}/game`); // 跳转到游戏页面
+            return; // 已跳转，无需进一步处理
+          }
+          // 可选：处理其他状态，例如房间关闭或游戏结束
+          else if (this.room.Status === 2 || this.room.Status === 3) { // 2: Completed, 3: Closed
+            const message = this.room.Status === 2 ? "游戏已结束。" : "房间已关闭。";
+            console.log(`[WaitingRoom] Room status is ${this.room.Status} (${message}). Navigating to lobby.`);
+            this.stopPolling();
+            alert(message); // 提示用户
+            this.$router.push('/lobby'); // 跳转回大厅
+            return;
+          }
           // 验证数据结构 (可选，用于调试)
           if (!this.room.roomId) console.warn("后端返回的 room 对象缺少 roomId 字符串");
           if (!this.room.players) console.warn("后端返回的 room 对象缺少 players 列表");
@@ -234,13 +234,13 @@ export default {
             });
           }
           if (!this.hostPlayer) {
-             console.warn("无法从房间数据中确定房主信息。请检查后端是否正确设置了 Player.isHost 和 Player.user。");
-             // 检查 this.room.creator 是否可用作为备选
-             if (this.room.creator) {
-                 console.log("尝试使用 room.creator 作为房主信息:", this.room.creator);
-                 // 如果 hostPlayer 逻辑依赖于 players 列表中的 isHost，
-                 // 而 creator 是直接挂在 room 上的，需要调整 hostPlayer 计算属性
-             }
+            console.warn("无法从房间数据中确定房主信息。请检查后端是否正确设置了 Player.isHost 和 Player.user。");
+            // 检查 this.room.creator 是否可用作为备选
+            if (this.room.creator) {
+              console.log("尝试使用 room.creator 作为房主信息:", this.room.creator);
+              // 如果 hostPlayer 逻辑依赖于 players 列表中的 isHost，
+              // 而 creator 是直接挂在 room 上的，需要调整 hostPlayer 计算属性
+            }
           }
 
         } else {
@@ -253,60 +253,60 @@ export default {
       } catch (error) {
         console.error('WaitingRoom: 获取房间详情时发生网络或API错误:', error);
         if (error.response && error.response.status === 404) {
-            this.errorMessage = '房间不存在或已被关闭。';
+          this.errorMessage = '房间不存在或已被关闭。';
         } else {
-            this.errorMessage = '加载房间信息失败，请检查网络连接或稍后重试。';
+          this.errorMessage = '加载房间信息失败，请检查网络连接或稍后重试。';
         }
         this.room = null; // 清空房间数据
       } finally {
         this.isLoading = false;
       }
     },
-  async startGame() {
-    if (!this.isCurrentUserHost) {
-      alert("只有房主才能开始游戏。");
-      return;
-    }
-    if (!this.room || !this.currentUser || !this.currentUser.id) {
-      alert("无法开始游戏：房间或当前用户信息不完整。");
-      return;
-    }
-
-    // 可选：在这里添加其他开始游戏的逻辑，例如检查玩家人数
-    if (this.actualPlayers.length < 2) { // 假设最少需要2名玩家
-      alert("玩家人数不足（至少需要2人），无法开始游戏。");
-      return;
-    }
-
-    this.isLoadingStartGame = true; // 设置按钮加载状态
-    this.errorMessage = ''; // 清除之前的错误信息
-
-    console.log(`[WaitingRoom] Host (User ID: ${this.currentUser.id}) is attempting to start game for room: ${this.room.roomId}`);
-    try {
-      // 调用 apiService 中的 startGameInRoom 方法
-      const response = await apiService.startGameInRoom(this.room.roomId, this.currentUser.id);
-
-      if (response && response.success) {
-        console.log(`[WaitingRoom] API call to start game was successful: ${response.message}`);
-        // 游戏开始的跳转将由下一次轮询的 fetchRoomDetails 方法检测到 room.Status 变化来处理。
-        // 房主自己也会在下一次轮询时跳转。
-        // 如果希望房主能更快跳转，可以取消下一行注释，手动触发一次详情获取：
-        // await this.fetchRoomDetails(false);
-      } else {
-        // API 调用本身成功，但后端返回 { success: false, message: "..." }
-        this.errorMessage = `开始游戏失败: ${response?.message || '服务器返回了一个错误。'}`;
-        alert(this.errorMessage);
-        console.warn('[WaitingRoom] startGameInRoom API call returned success:false -', response?.message);
+    async startGame() {
+      if (!this.isCurrentUserHost) {
+        alert("只有房主才能开始游戏。");
+        return;
       }
-    } catch (error) {
-      // API 调用发生网络错误或抛出了 Error 对象 (例如从 apiService 抛出的)
-      this.errorMessage = `开始游戏时发生错误: ${error?.message || '未知错误，请检查控制台。'}`;
-      alert(this.errorMessage);
-      console.error('[WaitingRoom] Error calling startGameInRoom API:', error);
-    } finally {
-      this.isLoadingStartGame = false; // 清除按钮加载状态
-    }
-  },
+      if (!this.room || !this.currentUser || !this.currentUser.id) {
+        alert("无法开始游戏：房间或当前用户信息不完整。");
+        return;
+      }
+
+      // 可选：在这里添加其他开始游戏的逻辑，例如检查玩家人数
+      if (this.actualPlayers.length < 2) { // 假设最少需要2名玩家
+        alert("玩家人数不足（至少需要2人），无法开始游戏。");
+        return;
+      }
+
+      this.isLoadingStartGame = true; // 设置按钮加载状态
+      this.errorMessage = ''; // 清除之前的错误信息
+
+      console.log(`[WaitingRoom] Host (User ID: ${this.currentUser.id}) is attempting to start game for room: ${this.room.roomId}`);
+      try {
+        // 调用 apiService 中的 startGameInRoom 方法
+        const response = await apiService.startGameInRoom(this.room.roomId, this.currentUser.id);
+
+        if (response && response.success) {
+          console.log(`[WaitingRoom] API call to start game was successful: ${response.message}`);
+          // 游戏开始的跳转将由下一次轮询的 fetchRoomDetails 方法检测到 room.Status 变化来处理。
+          // 房主自己也会在下一次轮询时跳转。
+          // 如果希望房主能更快跳转，可以取消下一行注释，手动触发一次详情获取：
+          // await this.fetchRoomDetails(false);
+        } else {
+          // API 调用本身成功，但后端返回 { success: false, message: "..." }
+          this.errorMessage = `开始游戏失败: ${response?.message || '服务器返回了一个错误。'}`;
+          alert(this.errorMessage);
+          console.warn('[WaitingRoom] startGameInRoom API call returned success:false -', response?.message);
+        }
+      } catch (error) {
+        // API 调用发生网络错误或抛出了 Error 对象 (例如从 apiService 抛出的)
+        this.errorMessage = `开始游戏时发生错误: ${error?.message || '未知错误，请检查控制台。'}`;
+        alert(this.errorMessage);
+        console.error('[WaitingRoom] Error calling startGameInRoom API:', error);
+      } finally {
+        this.isLoadingStartGame = false; // 清除按钮加载状态
+      }
+    },
     // 修改 leaveRoom 方法
     async leaveRoom() {
       console.log('[WaitingRoom] User clicked "返回大厅" button.');
@@ -562,7 +562,7 @@ export default {
 }
 
 .action-icon {
-  font-size: 28px;
+  font-size: 24px;
   margin-bottom: 12px;
   height: 40px;
   width: 40px;
@@ -570,6 +570,7 @@ export default {
   align-items: center;
   justify-content: center;
   border-radius: 12px;
+  color: #4F46E5;
 }
 
 .start .action-icon {
@@ -751,16 +752,16 @@ export default {
     flex-direction: column;
     height: auto;
   }
-  
+
   .host-panel {
     width: 100%;
   }
-  
+
   .action-cards {
     flex-direction: row;
     gap: 16px;
   }
-  
+
   .action-card {
     flex: 1;
   }
@@ -770,12 +771,12 @@ export default {
   .waiting-container {
     width: 95%;
   }
-  
+
   .waiting-header {
     flex-direction: column;
     gap: 16px;
   }
-  
+
   .action-cards {
     flex-direction: column;
   }
