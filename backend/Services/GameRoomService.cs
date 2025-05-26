@@ -522,6 +522,49 @@ namespace backend.Services
             await _context.SaveChangesAsync();
             return true;
         }
+        /// <summary>
+        /// 更新游戏房间信息
+        /// </summary>
+        /// <param name="roomData">要更新的游戏房间对象</param>
+        /// <returns>更新成功返回更新后的游戏房间对象，否则返回 null</returns>
+        public async Task<GameRoom?> UpdateRoomAsync(GameRoom roomData)
+        {
+            var existingRoom = await _context.GameRooms
+                .Include(gr => gr.Players)
+                .Include(gr => gr.ChatHistory)
+                .FirstOrDefaultAsync(gr => gr.Id == roomData.Id);
+
+            if (existingRoom == null)
+            {
+                return null;
+            }
+
+            // 更新房间的基本信息
+            existingRoom.Name = roomData.Name;
+            existingRoom.Status = roomData.Status;
+            existingRoom.GameMode = roomData.GameMode;
+            existingRoom.IsPrivate = roomData.IsPrivate;
+            existingRoom.RoomPassword = roomData.RoomPassword;
+            existingRoom.MaxPlayers = roomData.MaxPlayers;
+            existingRoom.Rounds = roomData.Rounds;
+            existingRoom.Categories = roomData.Categories;
+            existingRoom.GameConfig = roomData.GameConfig;
+
+            // 你可能还需要更新关联的玩家和聊天记录等信息，这里仅做简单示例
+            // 例如，如果你需要更新玩家列表，可以添加相应的逻辑
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return existingRoom;
+            }
+            catch (Exception ex)
+            {
+                // 在实际应用中，这里应该使用更完善的日志记录机制
+                Console.WriteLine($"Error updating game room (RoomId: {roomData.Id}): {ex.ToString()}");
+                return null;
+            }
+        }
         public class LeaveRoomResult
         {
             public bool Success { get; set; }

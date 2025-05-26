@@ -25,46 +25,64 @@ namespace backend.Hubs
 
         // 玩家加入房间（SignalR专用，前端每个玩家建立SignalR连接后必须调用此方法）
         // 只有调用此方法后，SignalR连接才会加入组，房间内广播才有效
-        public async Task JoinRoom(string roomId, int playerId)
+    public async Task JoinRoom(string roomId, int userId)
+    {
+        Console.WriteLine($"1");
+
+        // 校验房间是否存在
+        var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomId);
+        Console.WriteLine($"2");
+        if (room == null)
         {
-            Console.WriteLine($"1");
-
-            // 校验房间是否存在
-            var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomId);
-            Console.WriteLine($"2");
-            if (room == null)
-            {
-                 Console.WriteLine($"3");
-                await Clients.Caller.SendAsync("RoomNotFound", "房间不存在");
-                return;
-            }
-            Console.WriteLine($"4");
-            // 校验玩家是否在房间内
-            // var player = room.Players.FirstOrDefault(p => p.Id == playerId);
-            // if (player == null)
-            // {
-            //      Console.WriteLine($"5");
-            //     await Clients.Caller.SendAsync("PlayerNotFound", "玩家不在房间中");
-            //     return;
-            // }
-            Console.WriteLine($"6");
-            // SignalR连接加入组
-            await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
-            _connectionPlayerMap[Context.ConnectionId] = playerId;
-
-            Console.WriteLine($"[SignalR] 已将连接 ID {Context.ConnectionId} 映射到玩家 ID {playerId}");
-
-            // 立即打印当前 _connectionPlayerMap 内容，便于调试
-            Console.WriteLine("[SignalR] 当前所有连接映射：");
-            foreach (var kvp in _connectionPlayerMap)
-            {
-                Console.WriteLine($"连接ID: {kvp.Key}, 玩家ID: {kvp.Value}");
-            }
-
-            // 通知房间内其他玩家
-            // await Clients.Group(roomId.ToString()).SendAsync("PlayerJoined", player.Username);
-            await Clients.Caller.SendAsync("JoinedRoom", roomId);
+            Console.WriteLine($"3");
+            await Clients.Caller.SendAsync("RoomNotFound", "房间不存在");
+            return;
         }
+        Console.WriteLine($"4");
+
+        // 校验玩家是否已经在房间内
+        var existingPlayer = room.Players.FirstOrDefault(p => p.Id == userId);
+        if (existingPlayer != null)
+        {
+            Console.WriteLine($"玩家已在房间中");
+            await Clients.Caller.SendAsync("PlayerAlreadyInRoom", "玩家已在房间中");
+            return;
+        }
+
+        // 获取玩家信息
+        var player = await _gameService.GetPlayerByIdAsync(userId);
+        if (player == null)
+        {
+            Console.WriteLine($"5");
+            await Clients.Caller.SendAsync("PlayerNotFound", "玩家不存在");
+            return;
+        }
+
+        // 将玩家添加到房间的玩家列表中
+        room.Players.Add(player);
+
+        // 保存数据库更改
+        await _gameRoomService.UpdateRoomAsync(room);
+
+        Console.WriteLine($"6");
+
+        // SignalR连接加入组
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
+        _connectionPlayerMap[Context.ConnectionId] = userId;
+
+        Console.WriteLine($"[SignalR] 已将连接 ID {Context.ConnectionId} 映射到玩家 ID {userId}");
+
+        // 立即打印当前 _connectionPlayerMap 内容，便于调试
+        Console.WriteLine("[SignalR] 当前所有连接映射：");
+        foreach (var kvp in _connectionPlayerMap)
+        {
+            Console.WriteLine($"连接ID: {kvp.Key}, 玩家ID: {kvp.Value}");
+        }
+
+        // 通知房间内其他玩家
+        await Clients.Group(roomId.ToString()).SendAsync("PlayerJoined", player.Username);
+        await Clients.Caller.SendAsync("JoinedRoom", roomId);
+    }
 
         //玩家退出登录
         public async Task Logout(int roomId)
@@ -323,9 +341,8 @@ public async Task SendChatMessage(string roomId, string message)
         {
             throw new Exception("房间不存在");
         }
-        PrintGroupPlayers(roomId);
         // **获取当前连接的玩家ID（使用线程安全的ConcurrentDictionary）**
-        if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
+        if (!_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int UserId))
         {
             Console.WriteLine($"[SignalR] SendChatMessage时未找到玩家信息，当前连接ID: {Context.ConnectionId}");
             Console.WriteLine("[SignalR] 当前所有连接映射：");
@@ -336,23 +353,24 @@ public async Task SendChatMessage(string roomId, string message)
             throw new Exception("未找到玩家信息");
         }
 
-        // // 校验玩家是否在房间中（从数据库获取玩家列表，避免依赖内存映射）
-        // var player = room.Players.FirstOrDefault(p => p.Id == playerId);
-        // if (player == null)
-        // {
-        //     throw new Exception("玩家不在当前房间中");
-        // }
-
+        // 校验玩家是否在房间中（从数据库获取玩家列表，避免依赖内存映射）
+        var player = room.Players.FirstOrDefault(p => p.UserId.HasValue && p.UserId.Value == UserId);
+        Console.WriteLine($"[SignalR] SendChatMessage - 玩家ID: {UserId}, 玩家用户名: {player?.Username ?? "未知"}");
+        if (player == null)
+                {
+                    throw new Exception("玩家不在当前房间中");
+                }
+        Console.WriteLine($"1");
         // 构建消息对象
         var chatMessage = new ChatMessage
         {
             Content = message,
-            SenderId = playerId,
+            SenderId = UserId,
             GameRoomId = room.RoomId,
             Timestamp = DateTime.UtcNow,
             // Sender = player.User // 关联用户信息
         };
-
+Console.WriteLine($"2");
         // 保存消息到数据库
         try
         {
@@ -364,18 +382,19 @@ public async Task SendChatMessage(string roomId, string message)
             Console.WriteLine($"保存聊天消息失败: {ex.Message}");
             // 继续执行，即使保存失败也尝试发送消息
         }
-
+Console.WriteLine($"3");
         // 广播消息给房间内的所有玩家
-        await Clients.Group(roomId).SendAsync("ReceiveChatMessage", new
+        await Clients.Group(roomId.ToString()).SendAsync("ReceiveChatMessage", new
         {
-            // playerId = player.Id,
-            // username = player.User?.Username ?? player.Username,
+            GameRoomId = roomId,
+            SenderId = UserId,
+            playerId = player.Id,
+            username = player.User?.Username ?? player.Username,
             content = message,
             timestamp = chatMessage.Timestamp.ToString("o"),
-            isSystem = false
         });
 
-        // Console.WriteLine($"消息已广播 - 房间ID: {roomId}, 玩家: {player.Username}");
+        Console.WriteLine($"消息已广播 - 房间ID: {roomId}, 玩家: {player.Username}");
     }
     catch (Exception ex)
     {

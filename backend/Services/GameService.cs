@@ -271,6 +271,15 @@ namespace backend.Services
                 .OrderBy(d => d.Timestamp)
                 .ToListAsync();
         }
+         /// <summary>
+        /// 根据玩家 ID 获取玩家信息
+        /// </summary>
+        /// <param name="playerId">玩家 ID</param>
+        /// <returns>玩家对象</returns>
+        public async Task<Player> GetPlayerByIdAsync(int playerId)
+        {
+            return await _context.Players.FindAsync(playerId);
+        }
 
     }
 
