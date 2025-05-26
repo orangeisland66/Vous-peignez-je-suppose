@@ -289,7 +289,8 @@ export default {
 
 /* Base Layout */
 .create-room-background {
-  background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
+  background-color: lightcyan;
+  /* background: linear-gradient(135deg, #59635d 0%, #5c6b6e 100%); */
   min-height: 100vh;
   width: 100vw;
   display: flex;

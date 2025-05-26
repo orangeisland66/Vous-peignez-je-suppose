@@ -214,7 +214,7 @@ export default {
 
 /* Base and Layout Styles */
 .lobby-background {
-  background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
+  /* background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%); */
   min-height: 100vh;
   width: 100%;
   display: flex;

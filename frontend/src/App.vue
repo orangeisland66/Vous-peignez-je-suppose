@@ -70,8 +70,8 @@ html,
   padding: 0;
   overflow: hidden;
 }
-
 .app {
+  
   height: 100vh;
   width: 100vw;
   display: flex;
@@ -86,11 +86,13 @@ html,
 }
 
 .container {
+  
   width: var(--container-width);
   max-width: var(--max-content-width);
   padding: var(--container-padding);
   margin: 0 auto;
   display: flex;
+
   justify-content: space-between;
   align-items: center;
   box-sizing: border-box;
@@ -98,6 +100,7 @@ html,
 
 /* ===== NAVBAR ===== */
 .navbar {
+  
   position: fixed;
   top: -80px;
   left: 0;
@@ -126,6 +129,7 @@ html,
 }
 
 .logo:hover {
+  
   opacity: 0.7;
 }
 
@@ -144,6 +148,7 @@ html,
 }
 
 .nav-link:hover {
+  
   background-color: rgba(88, 120, 120, 0.1);
   transform: translateY(-2px);
   color: var(--dai-green);
@@ -151,19 +156,33 @@ html,
 
 /* ===== MAIN CONTENT ===== */
 .main-content {
+  
+  background-color: rgba(0, 0, 0, 0);
   flex: 1;
   display: flex;
   width: 100%;
   overflow: hidden;
+  
+}
+.main-container {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  display: flex; /* 保持flex布局 */
+  flex-direction: column; /* 保持垂直布局 */
 }
 
-.main-container {
-  flex-direction: column;
+.main-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  justify-content: flex-start;
-  overflow-y: hidden;
-  overflow-x: hidden;
-  padding-top: 0;
+  background: url('background.jpg') no-repeat center center fixed;
+  background-size: cover;
+  opacity: 0.8; /* 调整这个值来改变透明度，范围0-1 */
+  z-index: -1;
+  pointer-events: none;
 }
 </style>

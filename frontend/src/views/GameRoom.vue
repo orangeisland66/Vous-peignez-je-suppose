@@ -332,8 +332,9 @@ export default {
 
 /* Base and Layout Styles */
 .game-background {
-  background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
+  /* background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%); */
   width: 100vw;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -343,7 +344,7 @@ export default {
 
 .game-container {
   width: 90%;
-  height: calc(100vh - 100px);
+  height: calc(100vh - 80px);
   max-width: 1400px;
   background: white;
   border-radius: 24px;

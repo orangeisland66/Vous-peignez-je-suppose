@@ -385,7 +385,7 @@ export default {
 
 /* Base and Layout Styles */
 .waiting-background {
-  background: linear-gradient(135deg, #F9FAFB 0%, #EEF2FF 100%);
+  /* background: linear-gradient(135deg, #3153a9 0%, #15788c 100%); */
   min-height: 100vh;
   width: 100vw;
   display: flex;
