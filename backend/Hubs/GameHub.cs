@@ -39,17 +39,7 @@ namespace backend.Hubs
             return;
         }
         Console.WriteLine($"4");
-
-        // 校验玩家是否已经在房间内
-        var existingPlayer = room.Players.FirstOrDefault(p => p.Id == userId);
-        if (existingPlayer != null)
-        {
-            Console.WriteLine($"玩家已在房间中");
-            await Clients.Caller.SendAsync("PlayerAlreadyInRoom", "玩家已在房间中");
-            return;
-        }
-
-        // 获取玩家信息
+         // 获取玩家信息
         var player = await _gameService.GetPlayerByIdAsync(userId);
         if (player == null)
         {
@@ -58,6 +48,22 @@ namespace backend.Hubs
             return;
         }
 
+         // SignalR连接加入组
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
+        _connectionPlayerMap[Context.ConnectionId] = userId;
+            // 通知房间内其他玩家
+        await Clients.Group(roomId.ToString()).SendAsync("PlayerJoined", player.Username);
+        await Clients.Caller.SendAsync("JoinedRoom", roomId);
+        // 校验玩家是否已经在房间内
+            var existingPlayer = room.Players.FirstOrDefault(p => p.Id == userId);
+        if (existingPlayer != null)
+        {
+            Console.WriteLine($"玩家已在房间中");
+            await Clients.Caller.SendAsync("PlayerAlreadyInRoom", "玩家已在房间中");
+            return;
+        }
+
+       
         // 将玩家添加到房间的玩家列表中
         room.Players.Add(player);
 
@@ -66,9 +72,7 @@ namespace backend.Hubs
 
         Console.WriteLine($"6");
 
-        // SignalR连接加入组
-        await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
-        _connectionPlayerMap[Context.ConnectionId] = userId;
+       
 
         Console.WriteLine($"[SignalR] 已将连接 ID {Context.ConnectionId} 映射到玩家 ID {userId}");
 
@@ -79,9 +83,7 @@ namespace backend.Hubs
             Console.WriteLine($"连接ID: {kvp.Key}, 玩家ID: {kvp.Value}");
         }
 
-        // 通知房间内其他玩家
-        await Clients.Group(roomId.ToString()).SendAsync("PlayerJoined", player.Username);
-        await Clients.Caller.SendAsync("JoinedRoom", roomId);
+       
     }
 
         //玩家退出登录
