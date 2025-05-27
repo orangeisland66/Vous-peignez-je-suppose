@@ -188,6 +188,9 @@ namespace backend.Controllers
             // 2. 调用服务层方法
             var result = await _gameRoomService.StartGameByRoomIdStringAsync(roomIdString, request.UserId);
 
+            // 调用后端计时器，开始计时
+            
+
             // 3. 根据服务层返回的结果构造 HTTP 响应
             if (result.Success)
             {

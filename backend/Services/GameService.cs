@@ -18,7 +18,9 @@ namespace backend.Services
     {
         private readonly OurDbContext _context;
         private readonly WordManager _wordManager;
+
         private readonly IHubContext<GameHub> _hubContext;
+
 
         // TimerInfo 内部类
         private class TimerInfo

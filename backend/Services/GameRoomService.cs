@@ -16,11 +16,12 @@ namespace backend.Services
     {
         private readonly OurDbContext _context;
         private readonly IHubContext<GameHub> _hubContext; // <--- 新增字段
-
-        public GameRoomService(OurDbContext context, IHubContext<GameHub> hubContext)
+        private readonly GameService _gameService; // 如果需要调用其他游戏逻辑服务
+        public GameRoomService(OurDbContext context, IHubContext<GameHub> hubContext, GameService gameService)
         {
             _context = context;
-            _hubContext = hubContext; 
+            _hubContext = hubContext;
+            _gameService = gameService; // 如果需要调用其他游戏逻辑服务
         }
 
         /// <summary>
@@ -337,6 +338,18 @@ namespace backend.Services
 
             // 5. 更新游戏状态
             room.Status = RoomStatus.Playing; // 将状态设置为进行中
+                                              // 在这里开始计时
+
+            //_hubContext.//StartRoundWithTimer(roomIdString);
+
+
+
+
+            // 在这里写调用后端计时器的方法 
+            await _gameService.StartRoundTimer(roomIdString, GamePhase.DrawingAndGuessing, 75); //15秒选词，60秒作画
+
+
+
 
             // 1. 创建并初始化 ActiveGameState
             var activeGameState = new ActiveGameState
