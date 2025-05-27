@@ -49,10 +49,8 @@
         <!-- Left Panel - Canvas -->
         <section class="canvas-panel">
           <div class="canvas-container">
-            <!-- <drawing-board ref="DrawingBoard" :readonly="!isPainter" :tool="currentTool" :color="currentColor"
-              :size="currentSize" @stroke-completed="onStrokeCompleted" @canvas-cleared="onCanvasCleared" /> -->
             <drawing-board ref="DrawingBoard" :readonly="!isPainter" :tool="currentTool" :color="currentColor"
-              :size="currentSize" />
+              :size="currentSize" @stroke-completed="onStrokeCompleted" @canvas-cleared="onCanvasCleared" />
           </div>
         </section>
 
@@ -128,8 +126,8 @@ export default {
       currentPainter: '',
       players: [],
       currentPainterId: null,
-      timer: 30,
-      currentTimer:60, //现在已经实现了的倒计时
+      //timer: 30,
+      currentTimer: 75, //现在已经实现了的倒计时 初始化我的计时器设置为75
       targetWord: '',
       isPainter: true,
       isGameActive: true,
@@ -138,9 +136,9 @@ export default {
       selectionProgress: 100,
       wordOptions: [
         { text: '苹果', difficulty: 1 },
-        { text: '火龙果', difficulty: 2 },
-        { text: '拉面', difficulty: 3 },
-        { text: '米饭', difficulty: 2 }
+        { text: '汽车', difficulty: 2 },
+        { text: '彩虹', difficulty: 3 },
+        { text: '飞机', difficulty: 2 }
       ],
       currentTool: 'pen',
       currentColor: '#000000',
@@ -195,20 +193,57 @@ export default {
       await signalRService.setupTimerListener((this.updateTimer));
       console.log('已经调用了setupTimerListener');
     },
+
+
+
     // 更新前端计时器显示
     updateTimer(remainingSeconds){
       this.currentTimer = remainingSeconds;
+      if(remainingSeconds == 60 && this.showWordSelection){//当计时器还剩60秒的时候
+        console.log('计时器到达60秒，强制开始游戏');
+        this.forceStartGame();
+      }
+
+      if(remainingSeconds <=0){
+        this.handleTimeUp();
+      }
     },
 
+    // 强制开始游戏方法
+    forceStartGame(){
+      // 如果是画家且还在选词状态，自动选择第一个词汇
+      if(this.isPainter && this.showWordSelection){
+        if(this.wordOptions && this.wordOptions.length>0){
+          const selectedWord = this.wordOptions[0];
+          this.targetWord = selectedWord.text;
+          console.log('画家超时，自动选择词汇',selectedWord.text);
+        }
+      }
+
+      // 关闭所有的选词相关的界面
+      this.showWordSelection = false;
+      this.isGameActive = true;
+
+      //清除选词计时器
+      if(this.selectionTimerInterval){
+        clearIntervavl(this.selectionTimerInterval);
+        this.selectionTimerInterval = null;
+      }
+
+      console.log('游戏正式开始，当前词汇:', this.targetWord);
+    },
+
+    // 初始化游戏  修改了初始化游戏
     initializeGame() {
       console.log('GameRoom在初始化');
       const localPlayerId = parseInt(localStorage.getItem('userId')) || this.playerId;
       this.isPainter = this.currentPainterId === localPlayerId;
-      // this.fetchRoomPlayers();
+
       if (this.isPainter) {
         this.showWordSelectionModal();
       } else {
-        this.startTimer();
+        // 猜词者也显示等待界面
+        this.showWordSelection = true;
       }
     },
     setupSignalR() {
@@ -236,13 +271,13 @@ export default {
             this.setupTimerListener();
             //2.在通过画家开始游戏
 
-            // 只有画家才启动计时器
-            if (this.isPainter) {
-            console.log('[Timer] 画家启动游戏计时器');
-            this.startGameTimer();
-            } else {
-            console.log('[Timer] 猜词者只设置监听器，等待计时器更新');
-            }
+            // // 只有画家才启动计时器
+            // if (this.isPainter) {
+            // console.log('[Timer] 画家启动游戏计时器');
+            // this.startGameTimer();
+            // } else {
+            // console.log('[Timer] 猜词者只设置监听器，等待计时器更新');
+            // }
 
           })
           .catch(err => {
@@ -252,7 +287,6 @@ export default {
       });
     },
     async fetchRoomPlayers() {
-      console.log('[fetchRoomPlayers] 调用来源：', new Error().stack); // 打印调用栈
       try {
         const roomId = this.$route.params.roomId;
         const res = await apiService.getRoomDetails(roomId);
@@ -278,41 +312,50 @@ export default {
           });
       }
     },
+
     showWordSelectionModal() {
       this.showWordSelection = true;
       this.selectionTimer = 15;
       this.selectionProgress = 100;
       this.startSelectionTimer();
     },
-    startSelectionTimer() {
-      const interval = setInterval(() => {
-        this.selectionTimer--;
-        this.selectionProgress = (this.selectionTimer / 15) * 100;
 
-        if (this.selectionTimer <= 0) {
-          clearInterval(interval);
-          this.selectWord(this.wordOptions[0]);
-        }
-      }, 1000);
-    },
+    //一个用于前端显示的倒计时
+    // startSelectionTimer() {
+    //   const interval = setInterval(() => {
+    //     this.selectionTimer--;
+    //     this.selectionProgress = (this.selectionTimer / 15) * 100;
+
+    //     if (this.selectionTimer <= 0) {
+    //       clearInterval(interval);
+    //       this.selectWord(this.wordOptions[0]);
+    //     }
+    //   }, 1000);
+    // },
+
+
+    // 修改了选择词汇方法
     selectWord(word) {
       this.targetWord = word.text;
       this.showWordSelection = false;
       this.isGameActive = true;
-      this.timer = 60;
-      this.startTimer();
+      
+      //清除选词计时器
+      if(this.selectionTimerInterval){
+        clearInterval(this.selectionTimerInterval);
+        this.selectionTimerInterval = null;
+      }
 
       console.log('画家选择了词汇:', word.text);
     },
+
+
     formatTime(sec) {
       const m = String(Math.floor(sec / 60)).padStart(2, '0');
       const s = String(sec % 60).padStart(2, '0');
       return `${m}:${s}`;
     },
-    handleCorrectGuess(payload) {
-      if(payload==0)
-    {
-      console.log('猜词者未猜中，画家时间到！');
+    handleCorrectGuess() {
       this.isGameActive = false;
       this.currentRound++;
       this.resetGame();
@@ -321,31 +364,27 @@ export default {
       const nextPainterIndex = (this.players.findIndex(p => p.id === this.currentPainterId) + 1) % this.players.length;
       this.currentPainterId = this.players[nextPainterIndex].id;
       this.isPainter = this.currentPainterId === localPlayerId;
-    }
-
-      
 
       setTimeout(() => {
         this.initializeGame();
       }, 2000);
     },
-    startTimer() {
-      const timerInterval = setInterval(() => {
-        if (this.isGameActive && this.timer > 0) {
-          this.timer--;
-        } else {
-          clearInterval(timerInterval);
-          if (this.timer === 0 && this.isGameActive) {
-            this.isGameActive = false;
-            this.handleTimeUp();
-          }
-        }
-      }, 1000);
-    },
+    // startTimer() {
+    //   const timerInterval = setInterval(() => {
+    //     if (this.isGameActive && this.timer > 0) {
+    //       this.timer--;
+    //     } else {
+    //       clearInterval(timerInterval);
+    //       if (this.timer === 0 && this.isGameActive) {
+    //         this.isGameActive = false;
+    //         this.handleTimeUp();
+    //       }
+    //     }
+    //   }, 1000);
+    // },
     handleTimeUp() {
-      // console.log('时间到！');
-      console.log('时间到！当前 roomId:', this.$route.params.roomId); // 确认当前组件中 roomId 是否存在
-      // this.fetch(0);
+      console.log('时间到！');
+      this.handleCorrectGuess();
       const roomId = this.$route.params.roomId;
       this.$router.push({ name: 'RoundResult', params: { roomId } });
       //this.$router.push({ name: 'FinalScore', params: { roomId: this.roomId } })
@@ -355,7 +394,7 @@ export default {
         this.$refs.drawingBoard.clearCanvas();
       }
       this.targetWord = '';
-      this.timer = 60;
+      //this.timer = 60;
     }
   }
 };
