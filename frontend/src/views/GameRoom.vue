@@ -199,8 +199,9 @@ export default {
     // 更新前端计时器显示
     updateTimer(remainingSeconds){
       this.currentTimer = remainingSeconds;
-      if(remainingSeconds == 60 && this.showWordSelection){//当计时器还剩60秒的时候
-        console.log('计时器到达60秒，强制开始游戏');
+      this.selectionTimer = remainingSeconds-180; 
+      if(remainingSeconds == 180 && this.showWordSelection){//当计时器还剩60秒的时候
+        console.log('计时器到达180秒，强制开始游戏');
         this.forceStartGame();
       }
 

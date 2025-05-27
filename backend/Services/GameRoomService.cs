@@ -346,7 +346,7 @@ namespace backend.Services
 
 
             // 在这里写调用后端计时器的方法 
-            await _gameService.StartRoundTimer(roomIdString, GamePhase.DrawingAndGuessing, 75); //15秒选词，60秒作画
+            await _gameService.StartRoundTimer(roomIdString, GamePhase.DrawingAndGuessing, 195); //15秒选词，60秒作画
 
 
 
