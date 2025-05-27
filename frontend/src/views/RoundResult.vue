@@ -211,8 +211,8 @@ export default {
             username: player.user.username,
             avatarUrl: player.user.avatarUrl, // 假设用户信息包含头像 URL
             isDrawing: player.id === res.room.currentPainterId, // 判断是否为当前画手
-            roundScore: 1, // 本回合得分
-            totalScore: player.Score || 0, // 总分
+            roundScore: player.score || 0, // 本回合得分
+            totalScore: player.score || 0, // 总分
             hasGuessedCorrectly: player.HasGuessed || false, // 是否猜对
             guessedWord: player.guessedWord || '' // 猜测的词汇
           }));
