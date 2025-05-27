@@ -7,6 +7,7 @@ using backend.Services;
 using backend.Data;
 using Microsoft.AspNetCore.Mvc;
 using backend.Runtime;
+using System.Linq;
 
 namespace backend.Hubs
 {
@@ -17,9 +18,13 @@ namespace backend.Hubs
         private static readonly ConcurrentDictionary<string, int> _connectionPlayerMap = new();
         private readonly OurDbContext _context;
 
+        // 注入TimerService字段 //添加的一个字段 尝试将TimerService放到GameService中
+        //private readonly TimerService _timerService;
 
         private readonly GameRoomRuntimeManager _runtimeManager;
 
+        // 修改的一个函数
+        //往里面加入了TimeServcie的参数
         public GameHub(GameRoomService gameRoomService, GameService gameService, OurDbContext context,
             GameRoomRuntimeManager runtimeManager)
         {
@@ -28,7 +33,57 @@ namespace backend.Hubs
             _context = context;
             _runtimeManager = runtimeManager;
             // _connectionPlayerMap = new ConcurrentDictionary<string, int>();
+            //_timerService = timerService;
         }
+
+        // 添加的一个函数 好像问题不在这里
+        // 启动回合计时器
+        //[HubMethodName("StartRoundWithTimer")] //这个是什么意思？？？？？？
+        public async Task StartRoundWithTimer(string roomId)
+        {
+            try
+            {
+
+                Console.WriteLine($"收到启动计时器请求，房间ID:{roomId}");
+
+                // 验证房间是否存在 现在注释了这个位置
+                // if (string.IsNullOrEmpty(roomId))
+                // {
+                //     Console.WriteLine("我现在在GameHub的StartRoundWithTimer的if语句中，寄了");
+                //     //await Clients.Caller.SendAsync("Error", "房间ID不能为空");
+                //     return;
+                // }
+
+                //调用TimerService启动计时器 这里我不知道 现在在测试这个位置
+                await _gameService.StartRoundTimer(roomId, GamePhase.DrawingAndGuessing, 60); //假设每轮60秒
+
+                Console.WriteLine($"计时器已经启动，房间ID：{roomId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("我现在在GameHub的StartRoundWithTimer方法中，寄了");
+                //Console.WriteLine($"启动计时器失败:{ex.Message}");
+                await Clients.Caller.SendAsync("Error", $"启动计时器失败:{ex.Message}");
+            }
+        }
+
+        // 添加的一个函数
+        // 向房间广播计时器更新
+        // public async Task NotifyTimerUpdate(string roomId, int remainingSeconds)
+        // {
+        //     try
+        //     {
+        //         // 向指定房间的所有客户端发送计时器更新
+        //         await Clients.Group(roomId).SendAsync("TimerUpdate", remainingSeconds);
+
+        //         // 添加日志输出
+        //         Console.WriteLine($"向房间{roomId}广播计时器更新：{remainingSeconds}秒");
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Console.WriteLine($"广播计时器更新失败:{ex.Message}");
+        //     }
+        // }
 
         // 玩家加入房间（SignalR专用，前端每个玩家建立SignalR连接后必须调用此方法）
         // 只有调用此方法后，SignalR连接才会加入组，房间内广播才有效
@@ -681,4 +736,3 @@ namespace backend.Hubs
         
     }
 }
-

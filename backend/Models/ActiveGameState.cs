@@ -34,8 +34,8 @@ namespace backend.Models
         public string PlayerScoresJson { get; set; }
 
         // 回合开始时间戳 (可选, 如果需要精确计时或追溯)
-        // public DateTime? RoundStartTime { get; set; }
-
+        //打开了，用于处理时钟同步
+        public DateTime? RoundStartTime { get; set; }
         public ActiveGameState()
         {
             CurrentRound = 0; // 通常在游戏正式开始第一轮时设为 1

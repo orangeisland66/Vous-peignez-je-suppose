@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.Data;
+using Microsoft.AspNetCore.SignalR;
+using backend.Hubs;
+using System.Collections.Concurrent;
 
 namespace backend.Services
 {
@@ -12,11 +15,79 @@ namespace backend.Services
     {
         private readonly OurDbContext _context;
         private readonly WordManager _wordManager;
+        private readonly IHubContext<GameHub> _hubContext;
 
-        public GameService(OurDbContext context, WordManager wordManager)
+        // TimerInfo 内部类
+        private class TimerInfo
         {
+            public string RoomId { get; set; }
+            public GamePhase Phase { get; set; }
+            public DateTime StartTime { get; set; }
+            public int DurationSeconds { get; set; }
+            public int RemainingSeconds { get; set; }
+            public Timer Timer { get; set; }
+        }
+
+        //计时器相关
+        private readonly ConcurrentDictionary<string, TimerInfo> _activeTimers = new();
+
+        public GameService(OurDbContext context, WordManager wordManager, IHubContext<GameHub> hubContext)
+        {
+
             _context = context;
             _wordManager = wordManager;
+            _hubContext = hubContext;
+        }
+
+        // 启动回合倒计时
+        public async Task StartRoundTimer(string roomId, GamePhase phase, int durationSeconds)
+        {
+            // 停止现有计时器
+            await StopTimer(roomId);
+
+            var timerInfo = new TimerInfo
+            {
+                RoomId = roomId,
+                Phase = phase,
+                StartTime = DateTime.UtcNow,
+                DurationSeconds = durationSeconds
+            };
+
+            timerInfo.Timer = new Timer(OnTimerTick, roomId, 0, 1000); // 每秒触发一次
+            _activeTimers[roomId] = timerInfo;
+
+            Console.WriteLine($"房间{roomId}的计时器已启动");
+        }
+
+        // 停止计时器
+        public async Task StopTimer(string roomId)
+        {
+            if (_activeTimers.TryRemove(roomId, out var timerInfo))
+            {
+                timerInfo.Timer?.Dispose();
+                Console.WriteLine($"房间{roomId}的计时器已停止");
+            }
+        }
+
+        // 计时器回调
+        private async void OnTimerTick(object state)
+        {
+            var roomId = (string)state;
+            if (!_activeTimers.TryGetValue(roomId, out var timerInfo))
+                return;
+
+            var elapsed = (DateTime.UtcNow - timerInfo.StartTime).TotalSeconds;
+            var remainingSeconds = Math.Max(0, timerInfo.DurationSeconds - (int)elapsed);
+            timerInfo.RemainingSeconds = remainingSeconds;
+
+            Console.WriteLine("现在在GameService的OnTimerTick方法中,将广播时间到前端，剩余时间: " + remainingSeconds);
+            // 广播到前端
+            await _hubContext.Clients.Group(roomId).SendAsync("TimerUpdate", remainingSeconds);
+
+            if (remainingSeconds <= 0)
+            {
+                await StopTimer(roomId);
+            }
         }
 
         /// <summary>

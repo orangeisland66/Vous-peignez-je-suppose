@@ -10,7 +10,7 @@
 
         <div class="timer-badge">
           <div class="timer-icon">⏱</div>
-          <span class="timer-text">{{ formatTime(timer) }}</span>
+          <span class="timer-text">{{ formatTime(currentTimer) }}</span>
         </div>
 
         <!-- 玩家状态显示 -->
@@ -126,7 +126,8 @@ export default {
       currentPainter: '',
       players: [],
       currentPainterId: null,
-      timer: 60,
+      timer: 30,
+      currentTimer:60, //现在已经实现了的倒计时
       targetWord: '',
       isPainter: true,
       isGameActive: true,
@@ -167,7 +168,7 @@ export default {
     }
   },
   mounted() {
-    this.startTimer();
+    //this.startTimer();
     //this.initializeGame();
     this.setupSignalR();
   },
@@ -181,6 +182,20 @@ export default {
     next();
   },
   methods: {
+    // 启动游戏计时器
+    async startGameTimer(){
+      await signalRService.StartRoundWithTimer();
+      console.log('已经调用startRoundWithTimer');
+    },
+    //设置计时监听器
+    async setupTimerListener(){
+      await signalRService.setupTimerListener((this.updateTimer));
+      console.log('已经调用了setupTimerListener');
+    },
+    // 更新前端计时器显示
+    updateTimer(remainingSeconds){
+      this.currentTimer = remainingSeconds;
+    },
     initializeGame() {
       const localPlayerId = parseInt(localStorage.getItem('userId')) || this.playerId;
       this.isPainter = this.currentPainterId === localPlayerId;
@@ -206,6 +221,10 @@ export default {
           .then(() => {
             console.log(`[SignalR] 加入房间: ${roomId}, 玩家ID: ${playerId}`);
             this.fetchRoomPlayers();
+
+            this.startGameTimer();
+
+            this.setupTimerListener();
           })
           .catch(err => {
             console.error(`[SignalR] 加入房间失败: ${err.message}`);
