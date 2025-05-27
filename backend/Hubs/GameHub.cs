@@ -46,13 +46,12 @@ namespace backend.Hubs
 
                 Console.WriteLine($"收到启动计时器请求，房间ID:{roomId}");
 
-                // 验证房间是否存在 现在注释了这个位置
-                // if (string.IsNullOrEmpty(roomId))
-                // {
-                //     Console.WriteLine("我现在在GameHub的StartRoundWithTimer的if语句中，寄了");
-                //     //await Clients.Caller.SendAsync("Error", "房间ID不能为空");
-                //     return;
-                // }
+                //验证房间是否存在 
+                if (string.IsNullOrEmpty(roomId))
+                {
+                    Console.WriteLine("我现在在GameHub的StartRoundWithTimer的if语句中，出现了问题");
+                    return;
+                }
 
                 //调用TimerService启动计时器 这里我不知道 现在在测试这个位置
                 await _gameService.StartRoundTimer(roomId, GamePhase.DrawingAndGuessing, 60); //假设每轮60秒
@@ -61,29 +60,11 @@ namespace backend.Hubs
             }
             catch (Exception ex)
             {
-                Console.WriteLine("我现在在GameHub的StartRoundWithTimer方法中，寄了");
+                Console.WriteLine("我现在在GameHub的StartRoundWithTimer方法中，出现了问题");
                 //Console.WriteLine($"启动计时器失败:{ex.Message}");
                 await Clients.Caller.SendAsync("Error", $"启动计时器失败:{ex.Message}");
             }
         }
-
-        // 添加的一个函数
-        // 向房间广播计时器更新
-        // public async Task NotifyTimerUpdate(string roomId, int remainingSeconds)
-        // {
-        //     try
-        //     {
-        //         // 向指定房间的所有客户端发送计时器更新
-        //         await Clients.Group(roomId).SendAsync("TimerUpdate", remainingSeconds);
-
-        //         // 添加日志输出
-        //         Console.WriteLine($"向房间{roomId}广播计时器更新：{remainingSeconds}秒");
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         Console.WriteLine($"广播计时器更新失败:{ex.Message}");
-        //     }
-        // }
 
         // 玩家加入房间（SignalR专用，前端每个玩家建立SignalR连接后必须调用此方法）
         // 只有调用此方法后，SignalR连接才会加入组，房间内广播才有效
@@ -324,79 +305,6 @@ namespace backend.Hubs
                 return (int)roomId;
             }
             return null;
-        }
-
-        // 下面是我根据后端类图补充的函数
-        // OnConnectedAsync()
-        public override async Task OnConnectedAsync()
-        {
-            // 这里可以添加连接时的逻辑，比如记录连接信息等
-            await base.OnConnectedAsync();
-        }
-
-        // BroadcastStroke()
-        public async Task BroadcastStroke(int roomId, Stroke stroke)
-        {
-            if (_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
-            {
-                stroke.PlayerId = playerId;
-                await Clients.Group(roomId.ToString()).SendAsync("ReceiveStroke", stroke);
-            }
-            else
-            {
-                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
-            }
-        }
-
-        // BroadcastGuess
-        public async Task BroadcastGuess(int roomId, string guessedWord)
-        {
-            if (_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
-            {
-                await Clients.Group(roomId.ToString()).SendAsync("ReceiveGuess", playerId, guessedWord);
-            }
-            else
-            {
-                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
-            }
-        }
-
-        // BroadcastChatMessage
-        public async Task BroadcastChatMessage(int roomId, string ChatMessage)
-        {
-            if (_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
-            {
-                await Clients.Group(roomId.ToString()).SendAsync("ReceiveChatMessage", playerId, ChatMessage);
-            }
-            else
-            {
-                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
-            }
-        }
-
-        // HandleNetworkInterrupt
-        public async Task HandleNetworkInterrupt(int roomId)
-        {
-            if (_connectionPlayerMap.TryGetValue(Context.ConnectionId, out int playerId))
-            {
-                await Clients.Group(roomId.ToString()).SendAsync("NetworkInterrupt", playerId);
-            }
-            else
-            {
-                await Clients.Caller.SendAsync("NotAuthorized", "未找到玩家信息");
-            }
-        }
-
-        // ReconnectUser
-        public async Task ReconnectUser(int roomId)
-        {
-
-        }
-
-        // UpdatePlayerStatus
-        public async Task UpdatePlayerStatus(int roomId, PlayerStatus status)
-        {
-
         }
 
         // 实时同步画板数据

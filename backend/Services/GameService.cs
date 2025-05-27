@@ -8,6 +8,9 @@ using backend.Data;
 using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
@@ -22,11 +25,23 @@ namespace backend.Services
         {
             public string RoomId { get; set; }
             public GamePhase Phase { get; set; }
+            public Stopwatch Stopwatch { get; set; } = new Stopwatch();//使用更加精确的计时器
             public DateTime StartTime { get; set; }
             public int DurationSeconds { get; set; }
             public int RemainingSeconds { get; set; }
             public Timer Timer { get; set; }
+
+            //计算剩余时间
+            public double GetRemainingSeconds()
+            {
+                if (!Stopwatch.IsRunning)
+                    return 0;
+
+                var elapsedSeconds = Stopwatch.Elapsed.TotalSeconds;
+                return Math.Max(0, DurationSeconds - elapsedSeconds);
+            }
         }
+
 
         //计时器相关
         private readonly ConcurrentDictionary<string, TimerInfo> _activeTimers = new();
@@ -39,7 +54,8 @@ namespace backend.Services
             _hubContext = hubContext;
         }
 
-        // 启动回合倒计时
+
+        // 优化版本 StartRoundTimer 方法
         public async Task StartRoundTimer(string roomId, GamePhase phase, int durationSeconds)
         {
             // 停止现有计时器
@@ -49,46 +65,73 @@ namespace backend.Services
             {
                 RoomId = roomId,
                 Phase = phase,
-                StartTime = DateTime.UtcNow,
                 DurationSeconds = durationSeconds
             };
 
-            timerInfo.Timer = new Timer(OnTimerTick, roomId, 0, 1000); // 每秒触发一次
+            // 启动 Stopwatch
+            timerInfo.Stopwatch.Start();
+
+            // 创建定时器，每秒触发一次
+            timerInfo.Timer = new Timer(OnTimerTick, roomId, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+
             _activeTimers[roomId] = timerInfo;
 
-            Console.WriteLine($"房间{roomId}的计时器已启动");
+            Console.WriteLine($"房间{roomId}的计时器已启动，持续时间: {durationSeconds} 秒");
+
+            // 立即发送初始时间
+            await _hubContext.Clients.Group(roomId).SendAsync("TimerUpdate", durationSeconds);
         }
 
-        // 停止计时器
+        //  优化版本 修改 StopTimer 方法
         public async Task StopTimer(string roomId)
         {
             if (_activeTimers.TryRemove(roomId, out var timerInfo))
             {
+                // 停止 Stopwatch
+                timerInfo.Stopwatch?.Stop();
+
+                // 停止并释放 Timer
                 timerInfo.Timer?.Dispose();
+
                 Console.WriteLine($"房间{roomId}的计时器已停止");
+
+                // 通知前端计时器已停止
+                await _hubContext.Clients.Group(roomId).SendAsync("TimerStopped");
             }
         }
+        
 
-        // 计时器回调
+        // 优化版本 OnTimerTick 方法
         private async void OnTimerTick(object state)
         {
             var roomId = (string)state;
+
             if (!_activeTimers.TryGetValue(roomId, out var timerInfo))
                 return;
 
-            var elapsed = (DateTime.UtcNow - timerInfo.StartTime).TotalSeconds;
-            var remainingSeconds = Math.Max(0, timerInfo.DurationSeconds - (int)elapsed);
-            timerInfo.RemainingSeconds = remainingSeconds;
+            // 获取精确的剩余时间
+            var remainingSeconds = timerInfo.GetRemainingSeconds();
 
-            Console.WriteLine("现在在GameService的OnTimerTick方法中,将广播时间到前端，剩余时间: " + remainingSeconds);
+            // 向上取整发送给前端（用户友好）
+            var displaySeconds = (int)Math.Ceiling(remainingSeconds);
+
+            Console.WriteLine($"现在在GameService的OnTimerTick方法中,将广播时间到前端，剩余时间: {remainingSeconds:F2} 秒，显示: {displaySeconds} 秒");
+
             // 广播到前端
-            await _hubContext.Clients.Group(roomId).SendAsync("TimerUpdate", remainingSeconds);
+            await _hubContext.Clients.Group(roomId).SendAsync("TimerUpdate", displaySeconds);
 
+            // 检查是否时间到了
             if (remainingSeconds <= 0)
             {
+                Console.WriteLine($"房间{roomId}的计时器结束");
                 await StopTimer(roomId);
+
+                // 可以在这里添加回合结束的逻辑
+                await _hubContext.Clients.Group(roomId).SendAsync("TimerCompleted");
             }
         }
+
+
 
         /// <summary>
         /// 开始游戏轮次

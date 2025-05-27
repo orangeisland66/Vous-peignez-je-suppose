@@ -182,6 +182,7 @@ export default {
     next();
   },
   methods: {
+
     // 启动游戏计时器
     async startGameTimer(){
       await signalRService.StartRoundWithTimer();
@@ -196,7 +197,9 @@ export default {
     updateTimer(remainingSeconds){
       this.currentTimer = remainingSeconds;
     },
+
     initializeGame() {
+      console.log('GameRoom在初始化');
       const localPlayerId = parseInt(localStorage.getItem('userId')) || this.playerId;
       this.isPainter = this.currentPainterId === localPlayerId;
 
@@ -222,9 +225,23 @@ export default {
             console.log(`[SignalR] 加入房间: ${roomId}, 玩家ID: ${playerId}`);
             this.fetchRoomPlayers();
 
-            this.startGameTimer();
+            // 这个实现方法导致向后端传递了两次时间
+            // this.startGameTimer();
+            // this.setupTimerListener();
 
+            // 优化，使用画家的开始游戏向后端传递时间
+            //1.先设置时间的监听器
             this.setupTimerListener();
+            //2.在通过画家开始游戏
+
+            // 只有画家才启动计时器
+            if (this.isPainter) {
+            console.log('[Timer] 画家启动游戏计时器');
+            this.startGameTimer();
+            } else {
+            console.log('[Timer] 猜词者只设置监听器，等待计时器更新');
+            }
+
           })
           .catch(err => {
             console.error(`[SignalR] 加入房间失败: ${err.message}`);
