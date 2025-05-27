@@ -387,6 +387,8 @@ namespace backend.Hubs
                     is_Correct = true;
                     //更新玩家分数
                     player.Score += 1; // 假设猜对加1分
+                    player.HasGuessed = true; // 标记玩家已猜对
+                    // 记得每回合更新
                     _context.Players.Update(player);
                 }
                 try

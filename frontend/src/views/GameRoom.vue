@@ -49,8 +49,10 @@
         <!-- Left Panel - Canvas -->
         <section class="canvas-panel">
           <div class="canvas-container">
+            <!-- <drawing-board ref="DrawingBoard" :readonly="!isPainter" :tool="currentTool" :color="currentColor"
+              :size="currentSize" @stroke-completed="onStrokeCompleted" @canvas-cleared="onCanvasCleared" /> -->
             <drawing-board ref="DrawingBoard" :readonly="!isPainter" :tool="currentTool" :color="currentColor"
-              :size="currentSize" @stroke-completed="onStrokeCompleted" @canvas-cleared="onCanvasCleared" />
+              :size="currentSize" />
           </div>
         </section>
 
@@ -202,7 +204,7 @@ export default {
       console.log('GameRoom在初始化');
       const localPlayerId = parseInt(localStorage.getItem('userId')) || this.playerId;
       this.isPainter = this.currentPainterId === localPlayerId;
-
+      // this.fetchRoomPlayers();
       if (this.isPainter) {
         this.showWordSelectionModal();
       } else {
@@ -250,6 +252,7 @@ export default {
       });
     },
     async fetchRoomPlayers() {
+      console.log('[fetchRoomPlayers] 调用来源：', new Error().stack); // 打印调用栈
       try {
         const roomId = this.$route.params.roomId;
         const res = await apiService.getRoomDetails(roomId);
@@ -306,7 +309,10 @@ export default {
       const s = String(sec % 60).padStart(2, '0');
       return `${m}:${s}`;
     },
-    handleCorrectGuess() {
+    handleCorrectGuess(payload) {
+      if(payload==0)
+    {
+      console.log('猜词者未猜中，画家时间到！');
       this.isGameActive = false;
       this.currentRound++;
       this.resetGame();
@@ -315,6 +321,9 @@ export default {
       const nextPainterIndex = (this.players.findIndex(p => p.id === this.currentPainterId) + 1) % this.players.length;
       this.currentPainterId = this.players[nextPainterIndex].id;
       this.isPainter = this.currentPainterId === localPlayerId;
+    }
+
+      
 
       setTimeout(() => {
         this.initializeGame();
@@ -334,8 +343,9 @@ export default {
       }, 1000);
     },
     handleTimeUp() {
-      console.log('时间到！');
-      this.handleCorrectGuess();
+      // console.log('时间到！');
+      console.log('时间到！当前 roomId:', this.$route.params.roomId); // 确认当前组件中 roomId 是否存在
+      // this.fetch(0);
       const roomId = this.$route.params.roomId;
       this.$router.push({ name: 'RoundResult', params: { roomId } });
       //this.$router.push({ name: 'FinalScore', params: { roomId: this.roomId } })
