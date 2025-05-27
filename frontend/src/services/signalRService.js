@@ -55,7 +55,7 @@ class SignalRService {
       .withUrl(`/gameHub?roomId=${roomId}`)
       .withAutomaticReconnect()
       .build();
-
+    this.isConnected.value = true;
     // 注册接收消息的处理函数
     this.hubConnection.on('ReceiveChatMessage', (data) => {
       console.log('接收到消息:', data);

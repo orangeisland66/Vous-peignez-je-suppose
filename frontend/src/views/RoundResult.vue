@@ -69,7 +69,8 @@
 
                 <div class="player-header">
                   <div class="avatar-container">
-                    <img :src="player.avatarUrl || '/default-avatar.png'" alt="avatar" class="avatar" />
+                    <span v-if="!player.avatarUrl || hasError">{{ player.username?.charAt(0).toUpperCase() || 'P' }}</span>
+                    <img v-else :src="player.avatarUrl" alt="avatar" class="avatar" @error="handleImageError" />
                     <div class="role-badge" :class="player.isDrawing ? 'drawer' : 'guesser'">
                       {{ player.isDrawing ? '🎨' : '🤔' }}
                     </div>
@@ -139,69 +140,84 @@
 
 <script>
 import { HubConnectionBuilder } from '@microsoft/signalr'
-
+import apiService from '@/services/apiService';
+import signalRService from '@/services/signalRService';
 export default {
   name: 'RoundResult',
   data() {
-    return {
-      roomId: this.$route.params.id,
+      return {
+      roomId: this.$route.params.roomId, // 从路由获取 roomId
       currentRound: 1,
       totalRounds: 1,
       correctWord: '',
-      players: [],
+      players: [], // 存储玩家列表（包含分数和用户信息）
       isHost: false,
       isLastRound: false,
       canProceed: false,
       countdown: 3,
       canvasLoaded: false,
-      sortBy: 'round',
-      connection: null
-    }
+      sortBy: 'round'
+    };
   },
   computed: {
     sortedPlayers() {
+      // 按当前排序规则对玩家数组排序
       if (this.sortBy === 'round') {
-        return [...this.players].sort((a, b) => b.roundScore - a.roundScore)
+        return [...this.players].sort((a, b) => b.roundScore - a.roundScore);
       } else {
-        return [...this.players].sort((a, b) => b.totalScore - a.totalScore)
+        return [...this.players].sort((a, b) => b.totalScore - a.totalScore);
       }
     }
   },
   async created() {
-    await this.loadRoundInfo()
-    this.startCountdown()
-    this.initSignalR()
-  },
-  mounted() {
-    this.renderCanvas()
-  },
-  beforeDestroy() {
-    if (this.connection) {
-      this.connection.stop()
-    }
+    // 初始化时加载房间信息和玩家数据
+    await this.loadRoundInfo();
+    await this.fetchPlayers(); // 新增：获取玩家信息
+    this.startCountdown();
+    // this.initSignalR();
   },
   methods: {
     async loadRoundInfo() {
       try {
-        const res = await fetch(`/api/game/round/${this.roomId}/result`)
-        if (!res.ok) throw new Error('获取回合信息失败')
-        const data = await res.json()
-        this.currentRound = data.currentRound
-        this.totalRounds = data.totalRounds
-        this.correctWord = data.correctWord
-        this.isHost = data.isHost
-        this.isLastRound = data.currentRound === data.totalRounds
+        const res = await fetch(`/api/game/round/${this.roomId}/result`);
+        if (!res.ok) throw new Error('获取回合信息失败');
+        const data = await res.json();
+        this.currentRound = data.currentRound;
+        this.totalRounds = data.totalRounds;
+        this.correctWord = data.correctWord;
+        this.isHost = data.isHost;
+        this.isLastRound = data.currentRound === data.totalRounds;
       } catch (error) {
-        console.error('Load round info error:', error)
+        console.error('Load round info error:', error);
       }
     },
     async fetchPlayers() {
+      console.log('[fetchRoomPlayers] 调用来源：', new Error().stack); // 打印调用栈
       try {
-        const res = await fetch(`/api/game/${this.roomId}/players`)
-        if (!res.ok) throw new Error('获取玩家列表失败')
-        this.players = await res.json()
+        // 调用与之前 `fetchRoomPlayers` 类似的逻辑获取玩家数据
+        const roomId = this.$route.params.roomId;
+        const res = await apiService.getRoomDetails(roomId); // 使用原有的 API 方法
+        if (res && res.room && res.room.players) {
+            const scoreMap = new Map();
+            signalRService.chatMessages.value.forEach(msg => {
+              if (msg.playerId !== undefined && msg.score !== undefined) {
+                scoreMap.set(msg.playerId, msg.score);
+              }
+            });
+          // 处理玩家数据（假设每个玩家包含分数字段）
+          this.players = res.room.players.map(player => ({
+            id: player.user.id,
+            username: player.user.username,
+            avatarUrl: player.user.avatarUrl, // 假设用户信息包含头像 URL
+            isDrawing: player.id === res.room.currentPainterId, // 判断是否为当前画手
+            roundScore: 1, // 本回合得分
+            totalScore: player.Score || 0, // 总分
+            hasGuessedCorrectly: player.HasGuessed || false, // 是否猜对
+            guessedWord: player.guessedWord || '' // 猜测的词汇
+          }));
+        }
       } catch (error) {
-        console.error('Fetch players error:', error)
+        console.error('Fetch players error:', error);
       }
     },
     async initSignalR() {
@@ -211,8 +227,17 @@ export default {
         .build()
 
       this.connection.on('PlayersUpdated', updatedPlayers => {
-        this.players = updatedPlayers
-      })
+      this.players = updatedPlayers.map(player => ({
+        id: player.id,
+        username: player.username,
+        avatarUrl: player.avatarUrl || '',
+        isDrawing: player.isDrawing || false,
+        roundScore: player.roundScore || 0,
+        totalScore: player.totalScore || 0,
+        hasGuessedCorrectly: player.hasGuessedCorrectly || false,
+        guessedWord: player.guessedWord || ''
+      }))
+    })
 
       this.connection.on('RoundUpdated', roundData => {
         this.currentRound = roundData.currentRound
