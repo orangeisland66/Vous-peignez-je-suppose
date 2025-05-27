@@ -33,7 +33,7 @@
 
             <!-- Room Capacity -->
             <div class="form-group">
-              <label for="max-players">玩家数量</label>
+              <!-- <label for="max-players">玩家数量</label>
               <div class="range-selector">
                 <span class="range-value">{{ room.maxPlayers }}人</span>
                 <div class="slider-container">
@@ -48,18 +48,18 @@
                     <span>12</span>
                   </div>
                 </div>
-              </div>
+              </div> -->
             </div>
 
             <!-- Game Rounds -->
             <div class="form-group">
-              <label for="game-rounds">游戏回合</label>
+              <!-- <label for="game-rounds">游戏回合</label>
               <div class="rounds-selector">
                 <div v-for="rounds in [4, 6, 8, 10]" :key="rounds" @click="room.rounds = rounds" class="round-option"
                   :class="{ active: room.rounds === rounds }">
                   {{ rounds }}
                 </div>
-              </div>
+              </div> -->
             </div>
 
             <!-- Privacy Settings -->

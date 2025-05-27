@@ -138,9 +138,9 @@ export default {
       selectionProgress: 100,
       wordOptions: [
         { text: '苹果', difficulty: 1 },
-        { text: '汽车', difficulty: 2 },
-        { text: '彩虹', difficulty: 3 },
-        { text: '飞机', difficulty: 2 }
+        { text: '火龙果', difficulty: 2 },
+        { text: '拉面', difficulty: 3 },
+        { text: '米饭', difficulty: 2 }
       ],
       currentTool: 'pen',
       currentColor: '#000000',

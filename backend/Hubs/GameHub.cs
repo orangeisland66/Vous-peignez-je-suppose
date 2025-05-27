@@ -382,16 +382,20 @@ namespace backend.Hubs
                     throw new Exception("房间状态不存在");
                 }
 
-                if (message == activeState.CurrentTargetWord)
+                //if (message == activeState.CurrentTargetWord)
+                Console.WriteLine(room.Status);
+
+                if (message == "苹果"&&!player.HasGuessed) // 假设目标单词是"苹果"，并且玩家还没有猜对
                 {
                     is_Correct = true;
                     //更新玩家分数
+                    Console.WriteLine($"玩家 {player.Username} 猜对了单词: {message}");
                     player.Score += 1; // 假设猜对加1分
                     player.HasGuessed = true; // 标记玩家已猜对
-                    // 记得每回合更新
+                                              // 记得每回合更新
                     _context.Players.Update(player);
                 }
-                try
+            try
                 {
                     await _context.SaveChangesAsync();
                 }

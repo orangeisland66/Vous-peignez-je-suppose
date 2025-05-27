@@ -205,6 +205,7 @@ export default {
               }
             });
           // 处理玩家数据（假设每个玩家包含分数字段）
+          console.log('Fetched players:', res.room.players);
           this.players = res.room.players.map(player => ({
             id: player.user.id,
             username: player.user.username,
