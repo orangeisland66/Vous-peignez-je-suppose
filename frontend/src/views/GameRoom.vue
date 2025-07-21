@@ -74,9 +74,12 @@
         </div>
 
         <div class="word-options">
-          <div class="word-option" v-for="(word, index) in wordOptions" :key="index" @click="selectWord(word)">
-            <div class="word-text">{{ word.text }}</div>
-            <div class="word-difficulty">{{ word.difficulty }}星</div>
+          <div class="word-option" 
+            v-for="word in wordOptions" 
+            :key="word.text || word" 
+            @click="selectWord(word.text || word)"
+            :class="{ 'selected': selectedWord === (word.text || word) }">
+            <div class="word-text">{{ word.text || word }}</div>
           </div>
         </div>
 
@@ -126,6 +129,7 @@ export default {
       currentPainter: '',
       players: [],
       currentPainterId: null,
+      scores: [],
       //timer: 30,
       currentTimer: 75, //现在已经实现了的倒计时 初始化我的计时器设置为75
       targetWord: '',
@@ -134,21 +138,25 @@ export default {
       showWordSelection: true,
       selectionTimer: 15,
       selectionProgress: 100,
-      wordOptions: [
-        { text: '苹果', difficulty: 1 },
-        { text: '火龙果', difficulty: 2 },
-        { text: '拉面', difficulty: 3 },
-        { text: '米饭', difficulty: 2 }
-      ],
+      wordOptions: ["1","2","3","4"],
       currentTool: 'pen',
       currentColor: '#000000',
       currentSize: 5,
+      currentPhase: 'SelectingWord', // 当前游戏阶段
       colors: [
         '#000000', '#FF0000', '#00FF00', '#0000FF',
         '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500',
         '#800080', '#FFC0CB', '#A52A2A', '#808080'
       ],
-      brushSizes: [2, 5, 10, 15, 20]
+      brushSizes: [2, 5, 10, 15, 20],
+      gamePhases: {
+        0: 'NotStarted',
+        1: 'WaitingForPainterToChooseWord',
+        2: 'PainterChoosingWord',
+        3: 'DrawingAndGuessing',
+        4: 'RoundOver',
+        5: 'GameOver'
+      }
     };
   },
   computed: {
@@ -170,7 +178,11 @@ export default {
   mounted() {
     //this.startTimer();
     //this.initializeGame();
+    signalRService.registerGameStateUpdatedCallback(this.handleGameStateUpdate);
+    signalRService.registerWordChoicesCallback(this.handleWordChoices);
+
     this.setupSignalR();
+
   },
   beforeDestroy() {
     console.log('[GameRoom] 组件销毁，准备断开SignalR连接');
@@ -199,8 +211,8 @@ export default {
     // 更新前端计时器显示
     updateTimer(remainingSeconds){
       this.currentTimer = remainingSeconds;
-      this.selectionTimer = remainingSeconds-180; 
-      if(remainingSeconds == 180 && this.showWordSelection){//当计时器还剩60秒的时候
+      this.selectionTimer = remainingSeconds; 
+      if(remainingSeconds == 0 && this.showWordSelection){//当计时器还剩60秒的时候
         console.log('计时器到达180秒，强制开始游戏');
         this.forceStartGame();
       }
@@ -208,6 +220,31 @@ export default {
       if(remainingSeconds <=0){
         this.handleTimeUp();
       }
+    },
+    handleGameStateUpdate(state) {
+      console.log('游戏状态更新:', state);
+      this.currentRound = state.currentRound;
+      this.currentPainter=state.currentPainter.username || '';
+      this.currentPainterId = state.currentPainter.userId;
+      this.isPainter = this.currentPainterId === (parseInt(localStorage.getItem('userId')) || this.playerId);
+      this.currentPhase = this.gamePhases[state.currentPhase];
+      this.scores = state.playerScores || [];
+      console.log('当前游戏阶段:', this.currentPhase,this.isPainter ,this.scores,this.currentPainterId, this.currentPainter );
+      if(this.currentPhase =='WaitingForPainterToChooseWord'){
+        // 如果是画家并且处于选词阶段，显示选词界面
+        //this.showWordSelectionModal();
+         this.showWordSelection = true; 
+      }
+      else{
+        // 如果不是画家或者已经开始绘画，隐藏选词界面
+        this.showWordSelection = false;
+      }
+    },
+    handleWordChoices(data) {
+      console.log('画师收到可选词语:', data.choices);
+      // 显示选词弹窗
+      this.showWordSelectModal = true;
+      this.wordOptions = data.choices;
     },
 
     // 强制开始游戏方法
@@ -220,16 +257,16 @@ export default {
           console.log('画家超时，自动选择词汇',selectedWord.text);
         }
       }
-
+      signalRService.confirmWordSelection(this.targetWord);
       // 关闭所有的选词相关的界面
       this.showWordSelection = false;
       this.isGameActive = true;
 
-      //清除选词计时器
-      if(this.selectionTimerInterval){
-        clearIntervavl(this.selectionTimerInterval);
-        this.selectionTimerInterval = null;
-      }
+      // //清除选词计时器
+      // if(this.selectionTimerInterval){
+      //   clearIntervavl(this.selectionTimerInterval);
+      //   this.selectionTimerInterval = null;
+      // }
 
       console.log('游戏正式开始，当前词汇:', this.targetWord);
     },
@@ -237,15 +274,6 @@ export default {
     // 初始化游戏  修改了初始化游戏
     initializeGame() {
       console.log('GameRoom在初始化');
-      const localPlayerId = parseInt(localStorage.getItem('userId')) || this.playerId;
-      this.isPainter = this.currentPainterId === localPlayerId;
-
-      if (this.isPainter) {
-        this.showWordSelectionModal();
-      } else {
-        // 猜词者也显示等待界面
-        this.showWordSelection = true;
-      }
     },
     setupSignalR() {
       const roomId = this.$route.params.roomId;
@@ -256,36 +284,46 @@ export default {
         this.$router.push('/lobby');
         return;
       }
-
-      signalRService.initialize(roomId).then(() => {
-        signalRService.joinGroup(roomId, playerId)
-          .then(() => {
-            console.log(`[SignalR] 加入房间: ${roomId}, 玩家ID: ${playerId}`);
-            this.fetchRoomPlayers();
-
-            // 这个实现方法导致向后端传递了两次时间
-            // this.startGameTimer();
-            // this.setupTimerListener();
-
-            // 优化，使用画家的开始游戏向后端传递时间
-            //1.先设置时间的监听器
-            this.setupTimerListener();
-            //2.在通过画家开始游戏
-
-            // // 只有画家才启动计时器
-            // if (this.isPainter) {
-            // console.log('[Timer] 画家启动游戏计时器');
-            // this.startGameTimer();
-            // } else {
-            // console.log('[Timer] 猜词者只设置监听器，等待计时器更新');
-            // }
-
-          })
-          .catch(err => {
-            console.error(`[SignalR] 加入房间失败: ${err.message}`);
-            this.$router.push('/lobby');
-          });
-      });
+      this.handleAfterInitialize(roomId, playerId);
+    },
+    // 抽离初始化后的通用逻辑（加入房间+注册事件）
+    handleAfterInitialize(roomId, playerId) {
+      // 3. 加入房间组（确保只加入一次）
+      signalRService.joinGroup(roomId, playerId)
+        .then((success) => {
+          if (!success) {
+            throw new Error('加入房间组失败');
+          }
+          else {
+            console.log(`[SignalR] 成功加入房间组: ${roomId} (玩家ID: ${playerId})`);
+          }
+                    
+          // 5. 初始化玩家列表（保持原逻辑）
+          this.fetchRoomPlayers();
+          // 6. 设置计时器监听器（接收后端推送的计时信息）
+          this.setupTimerListener();
+          
+        })
+        .catch(err => {
+          console.error(`[SignalR] 加入房间组失败: ${err.message || '未知错误'}`);
+          this.errorMessage = '加入房间失败，正在尝试重新连接';
+          try{
+            signalRService.initialize(this.$route.params.roomId);
+            signalRService.joinGroup(this.$route.params.roomId, playerId);
+            console.log('[SignalR] 重新连接成功，并且重新加入房间组');
+          }catch(err){
+            console.error('[SignalR] 重新连接失败:', err);
+          }
+           // // 4. 注册游戏内所有必要的SignalR事件
+          // this.registerGameSignalREvents();
+          
+          // 5. 初始化玩家列表（保持原逻辑）
+          this.fetchRoomPlayers();
+          
+          // 6. 设置计时器监听器（接收后端推送的计时信息）
+          this.setupTimerListener();
+          // this.$router.push('/lobby');
+        });
     },
     async fetchRoomPlayers() {
       try {
@@ -295,7 +333,7 @@ export default {
           this.players = res.room.players.map(p => p.user);
           this.currentPainterId = res.room.currentPainterId || this.players[0]?.id || null;
           // 关键：获取到玩家和画家后再初始化游戏
-          this.initializeGame();
+        //  this.initializeGame();
         }
       } catch (e) {
         console.error('获取玩家列表失败', e);
@@ -318,10 +356,10 @@ export default {
       this.showWordSelection = true;
       this.selectionTimer = 15;
       this.selectionProgress = 100;
-      this.startSelectionTimer();
+      //this.startSelectionTimer();
     },
 
-    //一个用于前端显示的倒计时
+    // //一个用于前端显示的倒计时
     // startSelectionTimer() {
     //   const interval = setInterval(() => {
     //     this.selectionTimer--;
@@ -338,14 +376,15 @@ export default {
     // 修改了选择词汇方法
     selectWord(word) {
       this.targetWord = word.text;
+      signalRService.confirmWordSelection(this.targetWord);
       this.showWordSelection = false;
       this.isGameActive = true;
-      
-      //清除选词计时器
-      if(this.selectionTimerInterval){
-        clearInterval(this.selectionTimerInterval);
-        this.selectionTimerInterval = null;
-      }
+      this.showWordSelectModal = false;
+      // //清除选词计时器
+      // if(this.selectionTimerInterval){
+      //   clearInterval(this.selectionTimerInterval);
+      //   this.selectionTimerInterval = null;
+      // }
 
       console.log('画家选择了词汇:', word.text);
     },
@@ -387,7 +426,7 @@ export default {
       console.log('时间到！');
       this.handleCorrectGuess();
       const roomId = this.$route.params.roomId;
-      this.$router.push({ name: 'RoundResult', params: { roomId } });
+      //this.$router.push({ name: 'RoundResult', params: { roomId } });之后要改逻辑
       //this.$router.push({ name: 'FinalScore', params: { roomId: this.roomId } })
     },
     resetGame() {

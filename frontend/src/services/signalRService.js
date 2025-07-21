@@ -18,43 +18,41 @@ class SignalRService {
     this.onRedoReceivedCallback = null;
     this.onUndoReceivedCallback = null;
     this.onClearReceivedCallback = null;
+    this.onWordChoicesAvailableCallback = null; // 画师接收可选词语的回调
+    this.onGameStateUpdatedCallback = null;     // 所有玩家接收游戏状态更新的回调
 
     // 存储计时器更新回调函数
     this.timerUpdateCallback = null;
+
+        // 新增：事件缓存（存储未处理的事件）
+    this.eventCache = {
+      WordChoicesAvailable: null,  // 缓存词语选项事件
+      GameStateUpdated: null        // 缓存游戏状态更新事件（可能有多个）
+    };
   }
 
 
-  // 启动回合计时器 //这个函数有问题
-  async StartRoundWithTimer(){
-    console.log('现在在signalRService的StartRoundWithTimer函数中,准备启动计时器');
+  // 启动回合计时器（修复连接状态判断）
+  async StartRoundWithTimer() {
+    console.log('[SignalR] 准备启动计时器');
 
-    // 在这个地方检查signalR的连接状态
-    if(!this.hubConnection){
-      console.error('SignalR连接尚未初始化');
-      return;
+    // 严格检查连接状态：必须已初始化且状态为Connected
+    if (!this.hubConnection) {
+      console.error('[SignalR] 连接未初始化，无法启动计时器');
+      return false;
+    }
+    if (this.hubConnection.state !== signalR.HubConnectionState.Connected) {
+      console.error(`[SignalR] 连接状态异常（${this.hubConnection.state}），无法启动计时器`);
+      return false;
     }
 
-    console.log('当前连接状态',this.hubConnection.state); //显示出连接状态  //connecting
-
-    try{
-      if(this.hubConnection) //&& this.hubConnection.state == signalR.HubConnectionState.Connected){
-      { //console.log('this.currentRoomId.value type:',typeof this.currentRoomId)
-        console.log('我到了if语句里面'); 
-
-
-        //我需要在这里检查我的连接状态
-        console.log('当前连接状态2:', this.hubConnection.state);
-
-
-        await this.hubConnection.invoke('StartRoundWithTimer',this.currentRoomId.value);
-        console.log('启动${this.currentRoomId.value}的计时器');
-      }else{
-        console.error('SignalR连接未建立或已断开');
-      }
-    }
-    catch(error){
-      console.log('寄了');
-      console.error('启动计时器失败',error);
+    try {
+      await this.hubConnection.invoke('StartRoundWithTimer', this.currentRoomId.value);
+      console.log(`[SignalR] 已向房间${this.currentRoomId.value}发送启动计时器请求`);
+      return true;
+    } catch (error) {
+      console.error('[SignalR] 启动计时器失败:', error);
+      return false;
     }
   }
 
@@ -67,7 +65,7 @@ class SignalRService {
     if(this.hubConnection){
       // 监听来自服务端的TimerUpdate事件
       this.hubConnection.on('TimerUpdate',(remainingSeconds) => {
-        console.log('接收到计时器更新:,${remainingSeconds}秒');
+        // console.log(remainingSeconds);
         this.onTimerUpdate(remainingSeconds);
       });
     }
@@ -122,7 +120,38 @@ class SignalRService {
     this.onClearReceivedCallback = callback;
     console.log('注册了registerClearReceivedCallback函数');
   }
-
+  registerWordChoicesCallback(callback) {
+    this.onWordChoicesAvailableCallback = callback;
+    console.log('[SignalR] 已注册词语选项回调');
+    if (this.eventCache.WordChoicesAvailable) {
+      console.log('[SignalR] 补发缓存的词语选项事件');
+      // 复用上面的事件处理逻辑（避免代码重复）
+      this.onWordChoicesAvailableCallback({
+        choices: this.eventCache.WordChoicesAvailable.choices,       // 可选词语列表（如 ["苹果", "香蕉"]）
+        tip: this.eventCache.WordChoicesAvailable.tip || '请选择一个词语进行绘画', // 提示信息
+        painterUserId: this.eventCache.WordChoicesAvailable.painterUserId // 验证当前用户是否为画师（可选）
+      });
+    }
+  }
+  registerGameStateUpdatedCallback(callback) {
+    this.onGameStateUpdatedCallback = callback;
+    console.log('[SignalR] 已注册游戏状态更新回调');
+    if (this.eventCache.GameStateUpdated) {
+      console.log('[SignalR] 补发最新的游戏状态事件');
+      // 复用事件处理逻辑，传入最新的缓存数据
+      this.onGameStateUpdatedCallback({
+        currentRound: this.eventCache.GameStateUpdated.currentRound,         // 当前回合（如 1）
+        totalRounds: this.eventCache.GameStateUpdated.totalRounds,           // 总回合数（如 5）
+        currentPainter: {                        // 当前画师信息
+          userId: this.eventCache.GameStateUpdated.currentPainterUserId,
+          username: this.eventCache.GameStateUpdated.currentPainterUsername // 可选：后端可返回用户名
+        },
+        currentPhase: this.eventCache.GameStateUpdated.currentPhase,     // 游戏阶段（如 "SelectingWord"、"DrawingAndGuessing"）
+        // 其他需要的状态数据（如玩家分数、剩余时间等）
+        playerScores: this.eventCache.GameStateUpdated.playerScores || []    // 可选：玩家分数列表
+      });
+    }
+  }
   // 初始化并启动连接
   async initialize(roomId) { // 默认为房间1
     this.currentRoomId.value = roomId;
@@ -130,7 +159,15 @@ class SignalRService {
       .withUrl(`/gameHub?roomId=${roomId}`)
       .withAutomaticReconnect()
       .build();
-    this.isConnected.value = true;
+    //this.isConnected.value = true;
+    console.log(`[SignalR] 正在连接到房间${roomId}...`);
+    this.hubConnection.on('GameStarted', (data) => {  // 正确使用 this.hubConnection
+      console.log('[SignalR] 收到游戏开始通知:', data);
+      // 如果需要通过回调通知组件，可以添加一个 gameStartedCallback
+      if (this.gameStartedCallback && typeof this.gameStartedCallback === 'function') {
+        this.gameStartedCallback(data);
+      }
+    });
     // 注册接收消息的处理函数
     this.hubConnection.on('ReceiveChatMessage', (data) => {
       console.log('接收到消息:', data);
@@ -229,97 +266,135 @@ class SignalRService {
       console.log('现在在signalRService的ReceiveClear函数中');
     })
 
+    this.hubConnection.on('WordChoicesAvailable', (data) => {
+    console.log('[SignalR] 收到词语选项数据:', data);
+    // 验证数据结构
+    if (!data || !data.choices || !Array.isArray(data.choices)) {
+      console.error('[SignalR] 词语选项数据格式错误:', data);
+      return;
+    }
+    this.eventCache.WordChoicesAvailable = data; // 缓存事件
+    // 调用回调函数通知前端组件（如画师的选词界面）
+    if (this.onWordChoicesAvailableCallback && typeof this.onWordChoicesAvailableCallback === 'function') {
+      this.onWordChoicesAvailableCallback({
+        choices: data.choices,       // 可选词语列表（如 ["苹果", "香蕉"]）
+        tip: data.tip || '请选择一个词语进行绘画', // 提示信息
+        painterUserId: data.painterUserId // 验证当前用户是否为画师（可选）
+      });
+    } else {
+      console.log('[SignalR] 词语选项回调未注册，缓存事件');
+    }
+  });
+
+
+  // 新增：监听 GameStateUpdated 事件（所有玩家都会收到）
+  this.hubConnection.on('GameStateUpdated', (data) => {
+    console.log('[SignalR] 收到游戏状态更新:', data);
+    // 验证核心数据
+    if (data.currentRound === undefined || data.currentPhase === undefined) {
+      console.error('[SignalR] 游戏状态数据格式错误:', data);
+      return;
+    }
+    console.log('现在在signalRService的GameStateUpdated函数中，接收到游戏状态更新:', data);
+    this.eventCache.GameStateUpdated = data; // 只保留最新的状态
+    // 调用回调函数通知所有前端组件（如游戏主界面）
+    if (this.onGameStateUpdatedCallback && typeof this.onGameStateUpdatedCallback === 'function') {
+      this.onGameStateUpdatedCallback({
+        currentRound: data.currentRound,         // 当前回合（如 1）
+        totalRounds: data.totalRounds,           // 总回合数（如 5）
+        currentPainter: {                        // 当前画师信息
+          userId: data.currentPainterUserId,
+          username: data.currentPainterUsername // 可选：后端可返回用户名
+        },
+        currentPhase: data.currentPhase,     // 游戏阶段（如 "SelectingWord"、"DrawingAndGuessing"）
+        // 其他需要的状态数据（如玩家分数、剩余时间等）
+        playerScores: data.playerScores || []    // 可选：玩家分数列表
+      });
+    } else {
+      console.log('[SignalR] 游戏状态回调未注册，缓存事件');
+    }
+  });
+
+    // // 2. 注册游戏开始成功的回调
+    // connection.on("GameStarted", (data) => {
+    //     console.log("游戏已开始:", data.message);
+
+    // });
     // 处理连接状态变化
     this.hubConnection.onclose(() => {
       this.isConnected.value = false;
       console.log('SignalR 连接已断开');
     });
 
-    this.hubConnection.onreconnected(async () => {
+    this.hubConnection.onreconnecting((error) => {
+      this.isConnected.value = false;
+      console.log('[SignalR] 正在重连...', error?.message || '');
+    });
+
+    this.hubConnection.onreconnected((connectionId) => {
       this.isConnected.value = true;
-      this.hubConnectionId.value = this.hubConnection.connectionId;
-      console.log('SignalR 连接已重新建立');
-      // 关键：重连后自动重新加入组
+      this.connectionId.value = connectionId; // 重连后更新连接ID
+      console.log(`[SignalR] 重连成功，新连接ID: ${connectionId}`);
+      // 重连后自动加入组（仅当之前成功加入过）
       if (this.currentRoomId.value && this._lastPlayerIdForJoin) {
-        try {
-          console.log(this.currentRoomId.value);
-          console.log(this._lastPlayerIdForJoin);
-          await this.joinGroup(this.currentRoomId.value, this._lastPlayerIdForJoin);
-          console.log('SignalR 重连后已自动重新加入组');
-        } catch (e) {
-          console.warn('SignalR 重连后自动加入组失败:', e);
-        }
+        this.joinGroup(this.currentRoomId.value, this._lastPlayerIdForJoin)
+          .catch(err => console.warn('[SignalR] 重连后加入组失败:', err));
       }
     });
 
-    this.hubConnection.onreconnecting((error) => {
-      this.isConnected.value = false;
-      console.log('SignalR 正在重连:', error);
-    });
 
     try {
+      // 启动连接（首次连接）
       await this.hubConnection.start();
       this.isConnected.value = true;
       this.connectionId.value = this.hubConnection.connectionId;
-      console.log('SignalR 连接已重新建立');
-      // 关键：重连后自动重新加入组
-       console.log(this.currentRoomId.value);
-      console.log(this._lastPlayerIdForJoin);
-      if (this.currentRoomId.value && this._lastPlayerIdForJoin) {
-        try {
-         
-          await this.joinGroup(this.currentRoomId.value, this._lastPlayerIdForJoin);
-          console.log('SignalR 重连后已自动重新加入组');
-        } catch (e) {
-          console.warn('SignalR 重连后自动加入组失败:', e);
-        }
-      }
-      console.log(`SignalR 已连接到房间 ${roomId}`);
+      console.log(`[SignalR] 首次连接成功（房间${roomId}），连接ID: ${this.connectionId.value}`);
       return true;
     } catch (error) {
-      console.error('SignalR 连接失败:', error);
+      console.error(`[SignalR] 首次连接失败（房间${roomId}）:`, error);
+      this.hubConnection = null; // 连接失败时清空实例
       return false;
     }
   }
 
+    // 发送聊天消息
+  async confirmWordSelection(word) {
+    if (!this._isConnectionReady()) return false;
+    try {
+      await this.hubConnection.invoke('ConfirmWordSelection', this.currentRoomId.value, word);
+      return true;
+    } catch (error) {
+      console.error('[SignalR] 发送选择的词语失败:', error);
+      return false;
+    }
+  }
   // 发送聊天消息
   async sendChatMessage(message) {
-    // 调试信息
-    console.log(this.isConnected.value);
-    console.log(this.hubConnection);
-    if (!this.isConnected.value || !this.hubConnection) {
-        console.error('SignalR 连接未建立');
-        return false;
-    }
-
+    if (!this._isConnectionReady()) return false;
     try {
-        // 传递当前房间ID和消息内容（字符串）
-        await this.hubConnection.invoke('SendChatMessage', this.currentRoomId.value, message);
-        return true;
+      await this.hubConnection.invoke('SendChatMessage', this.currentRoomId.value, message);
+      return true;
     } catch (error) {
-        console.error('发送消息失败:', error);
-        return false;
+      console.error('[SignalR] 发送消息失败:', error);
+      return false;
     }
   }
 
-  // 加入SignalR组（房间），需要在连接建立后调用
+  // 加入房间组（关键：仅在首次连接或重连后调用）
   async joinGroup(groupId, playerId) {
-    if (!this.isConnected.value || !this.hubConnection) {
-      console.error('SignalR 连接未建立，无法加入组');
+    if (!this.hubConnection || this.hubConnection.state !== signalR.HubConnectionState.Connected) {
+      console.error('[SignalR] 连接未就绪，无法加入组');
       return false;
     }
+
     try {
-      // 先建立连接映射
-      await this.hubConnection.invoke('AddToConnectionMap', this.hubConnection.connectionId, playerId);
-      // 再加入房间
+      await this.hubConnection.invoke('AddToConnectionMap', this.connectionId.value, playerId);
       await this.hubConnection.invoke('JoinRoom', groupId, playerId);
-      // 记录最后一次加入组的playerId，便于重连后自动恢复
-      this._lastPlayerIdForJoin = playerId;
-      console.log('SignalR 连接已加入组:', this._lastPlayerIdForJoin);
-      console.log(`已加入SignalR组: ${groupId}, 玩家ID: ${playerId}`);
+      this._lastPlayerIdForJoin = playerId; // 保存玩家ID用于重连
+      console.log(`[SignalR] 成功加入组（房间${groupId}，玩家${playerId}）`);
       return true;
     } catch (error) {
-      console.error('加入SignalR组失败:', error);
+      console.error(`[SignalR] 加入组失败（房间${groupId}）:`, error);
       return false;
     }
   }
@@ -343,22 +418,13 @@ class SignalRService {
     return await this.initialize(roomId);
   }
 
-  // 发送绘画信息
   async sendStroke(strokeData) {
-    // 调试信息
-    console.log('现在在signalRService的sendStroke方法中，正在发送绘画数据:', strokeData);
-
-    if(!this.isConnected.value || !this.hubConnection) {
-      console.error('SignalR 连接未建立');
-      return false;
-    }
-
-    try{
-      // 传递当前房间ID和绘画数据
+    if (!this._isConnectionReady()) return false;
+    try {
       await this.hubConnection.invoke('SendStroke', this.currentRoomId.value, strokeData);
       return true;
-    } catch(error){
-      console.error('发送绘画数据失败:', error);
+    } catch (error) {
+      console.error('[SignalR] 发送绘画数据失败:', error);
       return false;
     }
   }
@@ -382,7 +448,22 @@ class SignalRService {
       return false;
     }
   }
-
+  // 辅助方法：检查连接是否就绪（统一判断逻辑）
+  _isConnectionReady() {
+    if (!this.hubConnection) {
+      console.error('[SignalR] 连接未初始化');
+      return false;
+    }
+    if (this.hubConnection.state !== signalR.HubConnectionState.Connected) {
+      console.error(`[SignalR] 连接状态异常（${this.hubConnection.state}），无法执行操作`);
+      return false;
+    }
+    if (!this.isConnected.value) {
+      console.error('[SignalR] 连接未就绪（isConnected为false）');
+      return false;
+    }
+    return true;
+  }
   // 发送重做操作
   async sendRedo() {
     // 调试信息

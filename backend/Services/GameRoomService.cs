@@ -8,7 +8,8 @@ using backend.Data;
 using backend.Services;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
-using backend.Hubs;             
+using backend.Hubs;      
+using backend.Runtime;       
 
 namespace backend.Services
 {
@@ -17,11 +18,13 @@ namespace backend.Services
         private readonly OurDbContext _context;
         private readonly IHubContext<GameHub> _hubContext; // <--- 新增字段
         private readonly GameService _gameService; // 如果需要调用其他游戏逻辑服务
-        public GameRoomService(OurDbContext context, IHubContext<GameHub> hubContext, GameService gameService)
+        private readonly GameRoomRuntimeManager _runtimeManager;
+        public GameRoomService(OurDbContext context, IHubContext<GameHub> hubContext, GameService gameService, GameRoomRuntimeManager runtimeManager)
         {
             _context = context;
             _hubContext = hubContext;
             _gameService = gameService; // 如果需要调用其他游戏逻辑服务
+            _runtimeManager = runtimeManager;
         }
 
         /// <summary>
@@ -346,7 +349,7 @@ namespace backend.Services
 
 
             // 在这里写调用后端计时器的方法 
-            await _gameService.StartRoundTimer(roomIdString, GamePhase.DrawingAndGuessing, 195); //15秒选词，60秒作画
+           // await _gameService.StartRoundTimer(roomIdString, GamePhase.DrawingAndGuessing, 195); //15秒选词，60秒作画
 
 
 
@@ -368,15 +371,17 @@ namespace backend.Services
             //将 ActiveGameState 实例关联回 GameRoom 实体
             // 这样如果后续立即访问 room.ActiveState，它不是 null (尽管EF Core在下次查询时会填充它)
             room.ActiveState = activeGameState;
+            _runtimeManager.GetOrCreateState(roomIdString, () => activeGameState); // 将状态添加到运行时管理器
+            
             
             try
             {
                 //_context.GameRooms.Update(room); // 标记实体为已修改 (对于跟踪的实体，EF Core 通常会自动检测变化)
                 await _context.SaveChangesAsync(); // 保存更改到数据库
-                // TODO: 在这里调用一个方法来开始游戏的第一轮逻辑, 例如:
-                await StartFirstRoundAsync(activeGameState, room.Players);
-                // 这个方法会负责选择第一个画师，生成选词等，并通过SignalR通知客户端。
-                // 我们将在下一步实现这个游戏逻辑的起点。
+                                                   // TODO: 在这里调用一个方法来开始游戏的第一轮逻辑, 例如:
+                                                   // await StartFirstRoundAsync(activeGameState, room.Players);
+                                                   // 这个方法会负责选择第一个画师，生成选词等，并通过SignalR通知客户端。
+                                                   // 我们将在下一步实现这个游戏逻辑的起点。
                 return new ServiceResponse { Success = true, Message = "游戏已成功开始。" };
             }
             catch (DbUpdateException ex) // 更具体的异常捕获
@@ -397,7 +402,7 @@ namespace backend.Services
             }
         }
 
-        private async Task StartFirstRoundAsync(ActiveGameState activeGameState, List<Player> playersInRoom)
+        public async Task StartNextRoundAsync(ActiveGameState activeGameState, List<Player> playersInRoom)
         {
             // TODO: 实现开始第一轮的逻辑
             // 1. 验证 activeGameState 和 playersInRoom 是否有效
@@ -408,21 +413,29 @@ namespace backend.Services
                 return;
             }
 
-            // 2. 设置当前回合为第一回合
-            activeGameState.CurrentRound = 1;
+            // 2. 设置当前回合为下一回合
+            activeGameState.CurrentRound++;
 
             // 3. 选择第一个画师 (简单示例：选择列表中的第一个玩家)
             //    在实际应用中，你可能需要更复杂的逻辑，例如随机选择或按顺序轮流
-            var firstPainter = playersInRoom.FirstOrDefault();
-            if (firstPainter?.User == null) // 确保玩家及其关联的 User 对象存在
+            var Painter = playersInRoom.FirstOrDefault();
+
+            if (activeGameState.CurrentRound > 1)
+            {
+                // 选择下一个画师 (假设按顺序轮流)
+                var currentPainterIndex = activeGameState.CurrentRound - 1; // 当前回合索引
+                var nextPainterIndex = currentPainterIndex % playersInRoom.Count; // 循环选择
+                Painter = playersInRoom[nextPainterIndex];
+            }
+            if (Painter?.User == null) // 确保玩家及其关联的 User 对象存在
             {
                 Console.WriteLine($"[StartFirstRoundAsync] Error: Could not determine the first painter (GameRoomId: {activeGameState.GameRoomId}).");
                 activeGameState.CurrentGamePhase = GamePhase.GameOver; // 或者一个错误状态
                 await _context.SaveChangesAsync();
                 return;
             }
-            activeGameState.CurrentPainterUserId = firstPainter.User.Id;
-
+            activeGameState.CurrentPainterUserId = Painter.User.Id;
+            Console.WriteLine($"[StartFirstRoundAsync] 选择的画师: {Painter.User.Username} (UserId: {Painter.User.Id})");
             // 4. 为画师生成词语选项 (从数据库获取)
             // 4.1 获取当前房间配置的词库分类
             var gameRoomForCategories = await _context.GameRooms.FindAsync(activeGameState.GameRoomId);
@@ -485,66 +498,66 @@ namespace backend.Services
             // 6. 保存对 activeGameState 的更改
             try
             {
-                // _context.ActiveGameStates.Update(activeGameState); // EF Core 会跟踪已加载实体的变化
+                _context.ActiveGameStates.Update(activeGameState); // EF Core 会跟踪已加载实体的变化
                 await _context.SaveChangesAsync();
                 Console.WriteLine($"[StartFirstRoundAsync] 第一轮已为 GameRoomId: {activeGameState.GameRoomId} 初始化。画师: {activeGameState.CurrentPainterUserId}。阶段: {activeGameState.CurrentGamePhase}。可选词语: {string.Join(", ", activeGameState.WordChoicesForPainter ?? new List<string>())}");
 
-                // 7. 通过 SignalR 通知客户端游戏状态已更新
-                try
-                {
-                    // 获取与 ActiveGameState 关联的 GameRoom 的字符串 RoomId (用于 SignalR 组名)
-                    var gameRoom = await _context.GameRooms.FindAsync(activeGameState.GameRoomId);
-                    if (gameRoom == null || string.IsNullOrEmpty(gameRoom.RoomId))
-                    {
-                        Console.WriteLine($"[StartFirstRoundAsync] Error: Could not find GameRoom or RoomId for ActiveGameStateId: {activeGameState.Id} to send SignalR message.");
-                        return;
-                    }
+                // // 7. 通过 SignalR 通知客户端游戏状态已更新
+                // try
+                // {
+                //     // 获取与 ActiveGameState 关联的 GameRoom 的字符串 RoomId (用于 SignalR 组名)
+                //     var gameRoom = await _context.GameRooms.FindAsync(activeGameState.GameRoomId);
+                //     if (gameRoom == null || string.IsNullOrEmpty(gameRoom.RoomId))
+                //     {
+                //         Console.WriteLine($"[StartFirstRoundAsync] Error: Could not find GameRoom or RoomId for ActiveGameStateId: {activeGameState.Id} to send SignalR message.");
+                //         return;
+                //     }
 
-                    // 准备要发送给客户端的游戏状态数据
-                    // 你可能需要创建一个 DTO (Data Transfer Object) 来精确控制发送给客户端的数据结构
-                    // 为了简单起见，我们直接发送 ActiveGameState，但要注意 WordChoicesForPainter 只应发送给画师
-                    var gameStateForClients = new
-                    {
-                        activeGameState.CurrentRound,
-                        activeGameState.TotalRounds,
-                        activeGameState.CurrentPainterUserId,
-                        // CurrentTargetWord 此时应该是 null 或空，因为画师还没选
-                        activeGameState.CurrentGamePhase,
-                        // PlayerScoresJson 可以发送，前端可以解析显示
-                        //activeGameState.PlayerScoresJson,
-                        // WordChoicesForPainter 需要特殊处理
-                    };
+                //     // 准备要发送给客户端的游戏状态数据
+                //     // 你可能需要创建一个 DTO (Data Transfer Object) 来精确控制发送给客户端的数据结构
+                //     // 为了简单起见，我们直接发送 ActiveGameState，但要注意 WordChoicesForPainter 只应发送给画师
+                //     var gameStateForClients = new
+                //     {
+                //         activeGameState.CurrentRound,
+                //         activeGameState.TotalRounds,
+                //         activeGameState.CurrentPainterUserId,
+                //         // CurrentTargetWord 此时应该是 null 或空，因为画师还没选
+                //         activeGameState.CurrentGamePhase,
+                //         // PlayerScoresJson 可以发送，前端可以解析显示
+                //         //activeGameState.PlayerScoresJson,
+                //         // WordChoicesForPainter 需要特殊处理
+                //     };
 
-                    // 向房间内的所有客户端广播游戏状态更新
-                    // 前端需要监听 "GameStateUpdated" 事件
-                    await _hubContext.Clients.Group(gameRoom.RoomId).SendAsync("GameStateUpdated", gameStateForClients);
-                    Console.WriteLine($"[SignalR] Sent 'GameStateUpdated' to group: {gameRoom.RoomId}");
+                //     // 向房间内的所有客户端广播游戏状态更新
+                //     // 前端需要监听 "GameStateUpdated" 事件
+                //     await _hubContext.Clients.Group(gameRoom.RoomId).SendAsync("GameStateUpdated", gameStateForClients);
+                //     Console.WriteLine($"[SignalR] Sent 'GameStateUpdated' to group: {gameRoom.RoomId}");
 
-                    // 单独向画师发送可选的词语列表
-                    if (activeGameState.CurrentPainterUserId.HasValue)
-                    {
-                        // 我们需要找到画师的 ConnectionId。这通常在 GameHub 的 JoinRoom 时映射。
-                        // 从服务层直接获取 ConnectionId 比较困难，通常 Hub 层更适合处理这种针对特定连接的消息。
-                        // 方案1: Hub 在 JoinRoom 时将 UserId -> ConnectionId 映射存储起来，服务层查询这个映射 (需要共享存储或服务)。
-                        // 方案2: 服务层触发一个事件，Hub 监听并处理。
-                        // 方案3 (更常见): Hub 层调用服务层方法后，Hub 层自己负责发送这些特定消息。
-                        // 方案4 (简单但不完美): 广播词语列表，前端画师客户端根据 isPainter 决定是否处理。
-                        //
-                        // 为了简单起见，我们暂时也广播给整个组，前端画师根据 isPainter 标志来显示词语选择。
-                        // 或者，我们可以定义一个特定的消息只包含词语选项，由画师客户端监听。
-                        // 例如:
-                        await _hubContext.Clients.Group(gameRoom.RoomId).SendAsync("WordChoicesAvailable", new
-                        {
-                            PainterUserId = activeGameState.CurrentPainterUserId,
-                            Choices = activeGameState.WordChoicesForPainter
-                        });
-                        Console.WriteLine($"[SignalR] Sent 'WordChoicesAvailable' to group: {gameRoom.RoomId} for painter: {activeGameState.CurrentPainterUserId}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[StartFirstRoundAsync] Error sending SignalR messages for GameRoomId: {activeGameState.GameRoomId}. Exception: {ex.ToString()}");
-                }
+                //     // 单独向画师发送可选的词语列表
+                //     if (activeGameState.CurrentPainterUserId.HasValue)
+                //     {
+                //         // 我们需要找到画师的 ConnectionId。这通常在 GameHub 的 JoinRoom 时映射。
+                //         // 从服务层直接获取 ConnectionId 比较困难，通常 Hub 层更适合处理这种针对特定连接的消息。
+                //         // 方案1: Hub 在 JoinRoom 时将 UserId -> ConnectionId 映射存储起来，服务层查询这个映射 (需要共享存储或服务)。
+                //         // 方案2: 服务层触发一个事件，Hub 监听并处理。
+                //         // 方案3 (更常见): Hub 层调用服务层方法后，Hub 层自己负责发送这些特定消息。
+                //         // 方案4 (简单但不完美): 广播词语列表，前端画师客户端根据 isPainter 决定是否处理。
+                //         //
+                //         // 为了简单起见，我们暂时也广播给整个组，前端画师根据 isPainter 标志来显示词语选择。
+                //         // 或者，我们可以定义一个特定的消息只包含词语选项，由画师客户端监听。
+                //         // 例如:
+                //         await _hubContext.Clients.Group(gameRoom.RoomId).SendAsync("WordChoicesAvailable", new
+                //         {
+                //             PainterUserId = activeGameState.CurrentPainterUserId,
+                //             Choices = activeGameState.WordChoicesForPainter
+                //         });
+                //         Console.WriteLine($"[SignalR] Sent 'WordChoicesAvailable' to group: {gameRoom.RoomId} for painter: {activeGameState.CurrentPainterUserId}");
+                //     }
+               //}
+                // catch (Exception ex)
+                // {
+                //     Console.WriteLine($"[StartFirstRoundAsync] Error sending SignalR messages for GameRoomId: {activeGameState.GameRoomId}. Exception: {ex.ToString()}");
+                // }
             }
             catch (Exception ex)
             {

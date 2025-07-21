@@ -97,6 +97,7 @@
 
 <script>
 import apiService from '@/services/apiService'
+import signalRService from '../services/signalRService';
 
 export default {
   name: 'WaitingRoom',
@@ -167,6 +168,7 @@ export default {
       // 可以考虑跳转回大厅或显示更友好的错误页
       this.$router.push('/lobby');
       return;
+
     }
 
     // 3. 调用 API 获取房间详情
@@ -175,6 +177,21 @@ export default {
     if (this.roomIdFromRoute && this.currentUser) {
       this.startPolling();
     }
+    signalRService.initialize(this.roomIdFromRoute)
+      .then(() => {
+        console.log(`[WaitingRoom] SignalR initialized for room: ${this.roomIdFromRoute}`);
+        // 3.1 加入房间组
+        return signalRService.joinGroup(this.roomIdFromRoute, this.currentUser.id);
+      })
+      .then(() => {
+        console.log(`[WaitingRoom] Successfully joined SignalR group for room: ${this.roomIdFromRoute}`);
+        // 3.2 注册SignalR事件监听器
+       // signalRService.registerRoomEvents(this);
+      })
+      .catch(err => {
+        console.error('[WaitingRoom] Error initializing SignalR:', err);
+        this.errorMessage = '无法连接到游戏服务器，请稍后重试。';
+      });
   },
   beforeUnmount() {
     this.stopPolling(); // 组件销毁时停止轮询
@@ -283,28 +300,22 @@ export default {
 
       console.log(`[WaitingRoom] Host (User ID: ${this.currentUser.id}) is attempting to start game for room: ${this.room.roomId}`);
       try {
-        // 调用 apiService 中的 startGameInRoom 方法
-        const response = await apiService.startGameInRoom(this.room.roomId, this.currentUser.id);
-
-        if (response && response.success) {
-          console.log(`[WaitingRoom] API call to start game was successful: ${response.message}`);
-          // 游戏开始的跳转将由下一次轮询的 fetchRoomDetails 方法检测到 room.Status 变化来处理。
-          // 房主自己也会在下一次轮询时跳转。
-          // 如果希望房主能更快跳转，可以取消下一行注释，手动触发一次详情获取：
-          // await this.fetchRoomDetails(false);
-        } else {
-          // API 调用本身成功，但后端返回 { success: false, message: "..." }
-          this.errorMessage = `开始游戏失败: ${response?.message || '服务器返回了一个错误。'}`;
-          alert(this.errorMessage);
-          console.warn('[WaitingRoom] startGameInRoom API call returned success:false -', response?.message);
-        }
+        // 调用SignalR方法而非API
+        await signalRService.hubConnection.invoke(
+          "StartRoomGame", 
+          this.room.roomId, 
+          this.currentUser.id
+        );
+        
+        // 成功调用SignalR方法，等待服务器推送游戏开始消息
+        console.log("[WaitingRoom] SignalR call to start game was successful. Waiting for game start notification.");
       } catch (error) {
-        // API 调用发生网络错误或抛出了 Error 对象 (例如从 apiService 抛出的)
+        // 处理SignalR调用错误
         this.errorMessage = `开始游戏时发生错误: ${error?.message || '未知错误，请检查控制台。'}`;
         alert(this.errorMessage);
-        console.error('[WaitingRoom] Error calling startGameInRoom API:', error);
+        console.error('[WaitingRoom] Error calling StartRoomGame via SignalR:', error);
       } finally {
-        this.isLoadingStartGame = false; // 清除按钮加载状态
+        this.isLoadingStartGame = false;
       }
     },
     // 修改 leaveRoom 方法

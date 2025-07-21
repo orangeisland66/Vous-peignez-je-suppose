@@ -46,7 +46,7 @@ namespace backend.Services
 
 
         //计时器相关
-        private readonly ConcurrentDictionary<string, TimerInfo> _activeTimers = new();
+        static private readonly ConcurrentDictionary<string, TimerInfo> _activeTimers = new();
 
         public GameService(OurDbContext context, WordManager wordManager, IHubContext<GameHub> hubContext)
         {
@@ -87,13 +87,17 @@ namespace backend.Services
         //  优化版本 修改 StopTimer 方法
         public async Task StopTimer(string roomId)
         {
+            Console.WriteLine($"尝试停止房间{roomId}的计时器");
             if (_activeTimers.TryRemove(roomId, out var timerInfo))
             {
+                // 停止计时器
+                timerInfo.Timer?.Change(Timeout.Infinite, Timeout.Infinite); // 停止触发
+                timerInfo.Timer?.Dispose(); // 释放资源
+                timerInfo.Timer = null;
+
                 // 停止 Stopwatch
                 timerInfo.Stopwatch?.Stop();
-
-                // 停止并释放 Timer
-                timerInfo.Timer?.Dispose();
+                timerInfo.Stopwatch = null;
 
                 Console.WriteLine($"房间{roomId}的计时器已停止");
 

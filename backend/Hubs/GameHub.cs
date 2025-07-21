@@ -8,6 +8,7 @@ using backend.Data;
 using Microsoft.AspNetCore.Mvc;
 using backend.Runtime;
 using System.Linq;
+using backend.Migrations;
 
 namespace backend.Hubs
 {
@@ -38,7 +39,7 @@ namespace backend.Hubs
 
         // 添加的一个函数 好像问题不在这里
         // 启动回合计时器
-        //[HubMethodName("StartRoundWithTimer")] //这个是什么意思？？？？？？
+        [HubMethodName("StartRoundWithTimer")] //这个是什么意思？？？？？？
         public async Task StartRoundWithTimer(string roomId)
         {
             try
@@ -54,7 +55,7 @@ namespace backend.Hubs
                 }
 
                 //调用TimerService启动计时器 这里我不知道 现在在测试这个位置
-                await _gameService.StartRoundTimer(roomId, GamePhase.DrawingAndGuessing, 60); //假设每轮60秒
+                await _gameService.StartRoundTimer(roomId, GamePhase.DrawingAndGuessing, 195); //假设每轮60秒
 
                 Console.WriteLine($"计时器已经启动，房间ID：{roomId}");
             }
@@ -70,18 +71,18 @@ namespace backend.Hubs
         // 只有调用此方法后，SignalR连接才会加入组，房间内广播才有效
         public async Task JoinRoom(string roomId, int userId)
         {
-            Console.WriteLine($"1");
+            // Console.WriteLine($"1");
 
             // 校验房间是否存在
             var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomId);
-            Console.WriteLine($"2");
+            // Console.WriteLine($"2");
             if (room == null)
             {
-                Console.WriteLine($"3");
+                // Console.WriteLine($"3");
                 await Clients.Caller.SendAsync("RoomNotFound", "房间不存在");
                 return;
             }
-            Console.WriteLine($"4");
+            // Console.WriteLine($"4");
             //      // 获取玩家信息
             //     var player = await _gameService.GetPlayerByIdAsync(userId);
             // if (player == null)
@@ -116,18 +117,18 @@ namespace backend.Hubs
             // 保存数据库更改
             await _gameRoomService.UpdateRoomAsync(room);
 
-            _runtimeManager.GetOrCreateState(roomId, () =>
-           {
-               return new ActiveGameState
-               {
-                   GameRoomId = room.Id,
-                   TotalRounds = room.Rounds,
-                   CurrentRound = 1,
-                   // 可选：初始化目标单词或其他状态字段
-               };
-           });
+        //     _runtimeManager.GetOrCreateState(roomId, () =>
+        //    {
+        //        return new ActiveGameState
+        //        {
+        //            GameRoomId = room.Id,
+        //            TotalRounds = room.Rounds,
+        //            CurrentRound = 1,
+        //            // 可选：初始化目标单词或其他状态字段
+        //        };
+        //    });
 
-            Console.WriteLine($"6");
+            // Console.WriteLine($"6");
 
 
             Console.WriteLine($"[SignalR] 已将连接 ID {Context.ConnectionId} 映射到玩家 ID {userId}");
@@ -221,37 +222,193 @@ namespace backend.Hubs
         }
 
         // 开始游戏
-        public async Task StartGame(int roomId)
+        public async Task StartRoomGame(string roomId, int userId)
         {
-            var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
-            if (room == null || room.Status != RoomStatus.Waiting)
+            // 1. 验证输入参数
+            if (string.IsNullOrWhiteSpace(roomId))
             {
-                await Clients.Caller.SendAsync("InvalidRoomStatus", "房间状态无法开始游戏");
+                await Clients.Caller.SendAsync("GameStartFailed", "房间ID (roomId) 不能为空。");
+                return;
+            }
+            
+            if (userId <= 0)
+            {
+                await Clients.Caller.SendAsync("GameStartFailed", "用户ID (userId) 无效或缺失。");
                 return;
             }
 
-            var result = await _gameRoomService.StartGameAsync(roomId);
-            if (result)
-            {
-                await Clients.Group(roomId.ToString()).SendAsync("GameStarted", "游戏开始了！");
-            }
-            else
-            {
-                await Clients.Caller.SendAsync("StartGameFailed", "游戏开始失败");
-            }
-        }
+            // 2. 调用服务层方法
+            var result = await _gameRoomService.StartGameByRoomIdStringAsync(roomId, userId);
 
-        // 切换到下一个轮次
-        public async Task NextRound(int roomId)
+                // 3. 根据服务层返回的结果推送消息
+                if (result.Success)
+                {
+                    // 获取房间所有参与者的连接ID
+                    //var connectionIds = await GetRoomConnectionIds(roomIdString);
+
+                    // 向房间内所有客户端推送游戏开始消息
+                    await Clients.Group(roomId.ToString()).SendAsync("GameStarted", new
+                    {
+                        success = true,
+                        message = result.Message,
+                        roomId = roomId
+                    });
+                    await NewRound(roomId, userId);
+    
+                }
+                else
+                {
+                    // 向调用者推送失败消息
+                    await Clients.Caller.SendAsync("GameStartFailed", new
+                    {
+                        success = false,
+                        message = result.Message
+                    });
+                }
+        }
+        private async Task SendStatus(string roomId, ActiveGameState activeState)
         {
-            var room = await _gameRoomService.GetRoomDetailsAsync(roomId);
+            var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomId);
+
+            // 5.1 向房间内所有客户端推送通用游戏状态
+            var gameStateForAll = new
+            {
+                currentRound = activeState.CurrentRound,
+                totalRounds = activeState.TotalRounds,
+                currentPhase = activeState.CurrentGamePhase,
+                currentPainterUserId = activeState.CurrentPainterUserId,
+                currentPainterUsername = room.Players.FirstOrDefault(p => p.UserId == activeState.CurrentPainterUserId)?.Username,
+                playerScores = activeState.PlayerScoresJson,
+                // 不包含词语选项（避免非画师看到）
+            };
+            await Clients.Group(roomId).SendAsync("GameStateUpdated", gameStateForAll);
+            Console.WriteLine($"[GameHub.StartFirstRound] 已向房间 {roomId} 推送游戏状态");
+        }
+        private async Task UpdateGameStatus(string mode, string roomId, ActiveGameState activeState)
+        {
+            var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomId);
+            if (mode == "completeSelection")
+            {
+                await SendStatus(roomId, activeState); // 确保状态更新
+            }
+            if (mode == "selection")
+                {
+                    await _gameRoomService.StartNextRoundAsync(activeState, room.Players);
+                    if (activeState.CurrentPainterUserId.HasValue)
+                    {
+                        var painterUserId = activeState.CurrentPainterUserId.Value;
+                        // 关键：通过 _connectionPlayerMap 反向查询画师的所有连接 ID
+                        var painterConnectionIds = _connectionPlayerMap
+                            .Where(kvp => kvp.Value == painterUserId) // 匹配用户 ID
+                            .Select(kvp => kvp.Key) // 提取连接 ID
+                            .ToList();
+
+                        // 验证画师是否有活跃连接
+                        if (!painterConnectionIds.Any())
+                        {
+                            Console.WriteLine($"[GameHub.UpdateGameStatus] 警告：画师 {painterUserId} 没有活跃连接，无法发送词语选项");
+                            // 可选：通知房间内其他玩家或处理错误
+                            await Clients.Group(roomId).SendAsync("SystemMessage", $"画师 {painterUserId} 已离线，无法继续游戏");
+                            return;
+                        }
+
+                        // 构建发送给画师的词语选项
+                        var wordChoicesForPainter = new
+                        {
+                            choices = activeState.WordChoicesForPainter,
+                            tip = "请选择一个词进行绘画",
+                            painterUserId = painterUserId // 前端可验证是否自己是画师
+                        };
+
+                        // 只向画师的连接发送消息（而非整个房间）
+                        await Clients.Clients(painterConnectionIds).SendAsync("WordChoicesAvailable", wordChoicesForPainter);
+                        Console.WriteLine($"[GameHub.UpdateGameStatus] 已向画师 {painterUserId} 推送词语选项（连接数：{painterConnectionIds.Count}）");
+
+                        // 同时更新房间内所有玩家的游戏状态（不含词语选项）
+                        await SendStatus(roomId, activeState);
+                    }
+                        try
+                    {
+                        // 启动选词计时器
+                        await _gameService.StartRoundTimer(roomId, GamePhase.WaitingForPainterToChooseWord, 15); // 假设选词阶段15秒
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[GameHub.StartFirstRound] 启动计时器失败: {ex.Message}");
+                        await Clients.Caller.SendAsync("Error", "启动计时器失败");
+                    }
+                }
+                else if (mode == "completeSelection")
+                {
+                    try
+                    {
+                        // 启动选词计时器
+                        await _gameService.StartRoundTimer(roomId, GamePhase.WaitingForPainterToChooseWord, 180); // 假设选词阶段180秒
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[GameHub.StartFirstRound] 启动计时器失败: {ex.Message}");
+                        await Clients.Caller.SendAsync("Error", "启动计时器失败");
+                    }
+                }
+                else
+                {
+                    throw new ArgumentException("无效的模式参数", nameof(mode));
+                }
+
+
+
+        }
+        public async Task ConfirmWordSelection(string roomId, string selectedWord)
+        {
+            if (!_runtimeManager.TryGetState(roomId, out var activeState))
+            {
+                Console.WriteLine("当前房间没有运行时状态，请检查游戏是否已初始化");
+                throw new Exception("房间状态不存在");
+            }
+
+            // 更新当前回合的目标单词
+            activeState.CurrentTargetWord = selectedWord;
+            activeState.CurrentGamePhase = GamePhase.DrawingAndGuessing;
+            //await _gameService.StopTimer(roomId);
+            await UpdateGameStatus("completeSelection", roomId, activeState);
+            Console.WriteLine($"[GameHub.ConfirmWordSelection] 画师已选择词语: {selectedWord}");
+
+            // Console.WriteLine($"[GameHub.ConfirmWordSelection] 已向房间 {roomId} 推送选词结果: {selectedWord}");
+        }
+        public async Task NewRound(string roomId, int userId)
+        {
+            if (!_runtimeManager.TryGetState(roomId, out var activeState))
+            {
+                Console.WriteLine("当前房间没有运行时状态，请检查游戏是否已初始化");
+                throw new Exception("房间状态不存在");
+            }
+            try
+            {
+                await UpdateGameStatus("selection", roomId, activeState);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GameHub.StartFirstRound] 发送SignalR消息失败: {ex.Message}");
+                // 通知客户端但不中断流程（状态已保存，仅推送失败）
+                await Clients.Caller.SendAsync("Warning", "回合已初始化，但通知可能延迟");
+            }
+           
+
+
+        }
+        // 切换到下一个轮次
+        public async Task NextRound(string roomId)
+        {
+            var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomId);
             if (room == null || room.Status != RoomStatus.Playing)
             {
                 await Clients.Caller.SendAsync("InvalidRoomStatus", "当前房间无法进入下一轮");
                 return;
             }
 
-            var result = await _gameService.StartRoundAsync(roomId);
+           // var result = await _gameService.StartRoundAsync(roomId);
+            var result = true; // 假设这里是调用游戏服务的逻辑
             if (result)
             {
                 await Clients.Group(roomId.ToString()).SendAsync("NextRound", "进入下一轮！");
