@@ -475,11 +475,11 @@ namespace backend.Services
                     int wordsToTake = Math.Min(4, availableWordsCount);
 
                     selectedWords = await wordsQuery
-                                            .OrderBy(w => Guid.NewGuid()) // 简单随机化方法，对于非常大的表可能性能不佳
-                                            .Take(wordsToTake)
-                                            .Select(w => w.Content) // 选择 Word 模型的 'Content' 属性
-                                            .Where(content => content != null) // 确保 Content 不为 null
-                                            .ToListAsync();
+                        .OrderBy(w => EF.Functions.Random()) // MySQL 特定的随机函数
+                        .Take(wordsToTake)
+                        .Select(w => w.Content)
+                        .Where(content => content != null)
+                        .ToListAsync();
                     
                     // 如果选取后得到的词语列表为空（例如，所有匹配词的 Content 都为 null）
                     if (!selectedWords.Any() && availableWordsCount > 0) {
@@ -488,6 +488,7 @@ namespace backend.Services
                     }
 
                 }
+                Console.WriteLine($"[StartFirstRoundAsync] 选取的词语: {string.Join(", ", selectedWords)} (房间: {gameRoomForCategories.RoomId})");
                 activeGameState.WordChoicesForPainter = selectedWords!; // 分配选取的词语（或备用词）
             }
 

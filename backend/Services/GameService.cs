@@ -119,7 +119,7 @@ namespace backend.Services
             var remainingSeconds = timerInfo.GetRemainingSeconds();
 
             // 向上取整发送给前端（用户友好）
-            var displaySeconds = (int)Math.Ceiling(remainingSeconds);
+            var displaySeconds = (int)Math.Round(remainingSeconds);
 
             Console.WriteLine($"现在在GameService的OnTimerTick方法中,将广播时间到前端，剩余时间: {remainingSeconds:F2} 秒，显示: {displaySeconds} 秒");
 

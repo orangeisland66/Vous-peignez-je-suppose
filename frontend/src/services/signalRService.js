@@ -153,7 +153,7 @@ class SignalRService {
     }
   }
   // 初始化并启动连接
-  async initialize(roomId) { // 默认为房间1
+  async initialize(roomId) { 
     this.currentRoomId.value = roomId;
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`/gameHub?roomId=${roomId}`)
@@ -388,7 +388,7 @@ class SignalRService {
     }
 
     try {
-      await this.hubConnection.invoke('AddToConnectionMap', this.connectionId.value, playerId);
+      //await this.hubConnection.invoke('AddToConnectionMap', this.connectionId.value, playerId);
       await this.hubConnection.invoke('JoinRoom', groupId, playerId);
       this._lastPlayerIdForJoin = playerId; // 保存玩家ID用于重连
       console.log(`[SignalR] 成功加入组（房间${groupId}，玩家${playerId}）`);
@@ -398,16 +398,37 @@ class SignalRService {
       return false;
     }
   }
+  async LeaveGroup(groupId, playerId) {
+    if (!this.hubConnection || this.hubConnection.state !== signalR.HubConnectionState.Connected) {
+      console.error('[SignalR] 连接未就绪，无法离开组');
+      return false;
+    }
+    try {
+      //await this.hubConnection.invoke('RemoveFromConnectionMap', this.connectionId.value, playerId);
+      await this.hubConnection.invoke('LeaveRoom', groupId, playerId);
+      console.log(`[SignalR] 成功离开组（房间${groupId}，玩家${playerId}）`);
+      return true;
+    } catch (error) {
+      console.error(`[SignalR] 离开组失败（房间${groupId}）:`, error);
+      return false;
+    }
+  }
 
   // 断开连接
   async disconnect() {
     // //计时器清理函数
     // this.removeTimerListener();
-
-    if (this.hubConnection) {
-      await this.hubConnection.stop();
-      this.isConnected.value = false;
-    }
+  await this.LeaveGroup(this.currentRoomId.value, this._lastPlayerIdForJoin)
+   if (this.hubConnection && this.isConnected.value) {
+        this.hubConnection.stop()
+          .then(() => {
+            this.isConnected.value = false;
+            console.log('[GameRoom] SignalR连接已断开');
+          })
+          .catch(err => {
+            console.error('[GameRoom] SignalR断开失败:', err);
+          });
+      }
   }
 
   // 切换房间

@@ -104,31 +104,25 @@ namespace backend.Hubs
             // }
             // SignalR连接加入组
             var player = await _gameService.GetPlayerByUserIdAsync(userId);
+            
             Console.WriteLine($"当前用户信息：{player.Id},{player.Username}");
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
             _connectionPlayerMap[Context.ConnectionId] = userId;
+            Console.WriteLine($"已将连接 ID {Context.ConnectionId} 映射到玩家 ID {userId}");
             // 通知房间内其他玩家
             await Clients.Group(roomId.ToString()).SendAsync("PlayerJoined", player.Username);
             await Clients.Caller.SendAsync("JoinedRoom", roomId);
             // 校验玩家是否已经在房间内
-
-
-
+            var existingPlayer = room.Players.FirstOrDefault(p => p.UserId == userId);
+            if (existingPlayer != null)
+            {
+                Console.WriteLine($"玩家已在房间中");
+                await Clients.Caller.SendAsync("PlayerAlreadyInRoom", "玩家已在房间中");
+                return;
+            }
+            room.Players.Add(player);
             // 保存数据库更改
             await _gameRoomService.UpdateRoomAsync(room);
-
-        //     _runtimeManager.GetOrCreateState(roomId, () =>
-        //    {
-        //        return new ActiveGameState
-        //        {
-        //            GameRoomId = room.Id,
-        //            TotalRounds = room.Rounds,
-        //            CurrentRound = 1,
-        //            // 可选：初始化目标单词或其他状态字段
-        //        };
-        //    });
-
-            // Console.WriteLine($"6");
 
 
             Console.WriteLine($"[SignalR] 已将连接 ID {Context.ConnectionId} 映射到玩家 ID {userId}");
@@ -139,16 +133,67 @@ namespace backend.Hubs
             {
                 Console.WriteLine($"连接ID: {kvp.Key}, 玩家ID: {kvp.Value}");
             }
-            var existingPlayer = room.Players.FirstOrDefault(p => p.UserId == userId);
-            if (existingPlayer != null)
+
+        }
+        public async Task LeaveRoom(string roomId, int userId)
+        {
+            Console.WriteLine($"[SignalR] 玩家 {userId} 请求离开房间 {roomId}");
+            // 校验房间是否存在
+            var room = await _gameRoomService.GetRoomDetailsByRoomIdStringAsync(roomId);
+            if (room == null)
             {
-                Console.WriteLine($"玩家已在房间中");
-                await Clients.Caller.SendAsync("PlayerAlreadyInRoom", "玩家已在房间中");
+                await Clients.Caller.SendAsync("RoomNotFound", "房间不存在");
                 return;
             }
 
-        }
+            // 获取玩家信息
+            var player = await _gameService.GetPlayerByUserIdAsync(userId);
+            if (player == null)
+            {
+                await Clients.Caller.SendAsync("PlayerNotFound", "玩家信息不存在");
+                return;
+            }
 
+            // 校验玩家是否在房间内
+            var existingPlayer = room.Players.FirstOrDefault(p => p.UserId == userId);
+            if (existingPlayer == null)
+            {
+                await Clients.Caller.SendAsync("PlayerNotInRoom", "玩家不在此房间中");
+                return;
+            }
+
+            // 从SignalR组中移除连接
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId.ToString());
+            
+            // 移除连接映射
+            if (_connectionPlayerMap.ContainsKey(Context.ConnectionId))
+            {
+                _connectionPlayerMap.Remove(Context.ConnectionId, out _);
+                Console.WriteLine($"[SignalR] 已移除连接 ID {Context.ConnectionId} 的玩家映射");
+            }
+
+            // 从房间中移除玩家（根据业务需求决定是否彻底移除或标记状态）
+            room.Players.Remove(existingPlayer);
+            await _gameRoomService.UpdateRoomAsync(room);
+
+            // 通知房间内其他玩家
+            await Clients.Group(roomId.ToString()).SendAsync("PlayerLeft", player.Username);
+            await Clients.Caller.SendAsync("LeftRoom", roomId);
+
+            // 调试信息：打印当前剩余连接映射
+            Console.WriteLine("[SignalR] 玩家离开后剩余连接映射：");
+            foreach (var kvp in _connectionPlayerMap)
+            {
+                Console.WriteLine($"连接ID: {kvp.Key}, 玩家ID: {kvp.Value}");
+            }
+
+            // // 额外逻辑：如果房间为空，可考虑删除房间（根据业务需求）
+            // if (room.Players.Count == 0)
+            // {
+            //     await _gameRoomService.DeleteRoomAsync(room.Id);
+            //     Console.WriteLine($"[SignalR] 房间 {roomId} 已空，已自动删除");
+            // }
+        }
         //玩家退出登录
         public async Task Logout(int roomId)
         {
@@ -441,18 +486,18 @@ namespace backend.Hubs
             }
         }
 
-        // 断开连接时
-        public override async Task OnDisconnectedAsync(System.Exception exception)
-        {
-            string connectionId = Context.ConnectionId;
-            if (_connectionPlayerMap.ContainsKey(connectionId))
-            {
-                int playerId = _connectionPlayerMap[connectionId];
-                _connectionPlayerMap.Remove(connectionId, out _);
-                Console.WriteLine($"用户断开连接，已移除映射 - ConnectionId: {connectionId}, PlayerId: {playerId}");
-            }
-            await base.OnDisconnectedAsync(exception);
-        }
+        // // 断开连接时
+        // public override async Task OnDisconnectedAsync(System.Exception exception)
+        // {
+        //     string connectionId = Context.ConnectionId;
+        //     if (_connectionPlayerMap.ContainsKey(connectionId))
+        //     {
+        //         int playerId = _connectionPlayerMap[connectionId];
+        //         _connectionPlayerMap.Remove(connectionId, out _);
+        //         Console.WriteLine($"用户断开连接，已移除映射 - ConnectionId: {connectionId}, PlayerId: {playerId}");
+        //     }
+        //     await base.OnDisconnectedAsync(exception);
+        // }
 
         // 获取当前连接的房间 ID
         private int? GetRoomIdFromContext()
@@ -751,11 +796,11 @@ namespace backend.Hubs
             Console.WriteLine($"清空操作已发送，房间ID：{roomId}，玩家ID：{UserId}");
         }
 
-        public async Task AddToConnectionMap(string connectionId, int playerId)
-        {
-            _connectionPlayerMap[connectionId] = playerId;
-            Console.WriteLine($"已将连接 ID {connectionId} 映射到玩家 ID {playerId}");
-        }
+        // public async Task AddToConnectionMap(int playerId)
+        // {
+        //     _connectionPlayerMap[Context.ConnectionId] = playerId;
+            
+        // }
 
         // 根据房间 ID 获取玩家名称列表
         public async Task<LinkedList<string>> GetPlayerNames(string roomId)

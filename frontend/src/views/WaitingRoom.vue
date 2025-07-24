@@ -177,7 +177,7 @@ export default {
     if (this.roomIdFromRoute && this.currentUser) {
       this.startPolling();
     }
-    signalRService.initialize(this.roomIdFromRoute)
+    await signalRService.initialize(this.roomIdFromRoute)
       .then(() => {
         console.log(`[WaitingRoom] SignalR initialized for room: ${this.roomIdFromRoute}`);
         // 3.1 加入房间组

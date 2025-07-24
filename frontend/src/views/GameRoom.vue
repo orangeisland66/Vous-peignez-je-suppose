@@ -133,6 +133,7 @@ export default {
       //timer: 30,
       currentTimer: 75, //现在已经实现了的倒计时 初始化我的计时器设置为75
       targetWord: '',
+      selectedWord: '',
       isPainter: true,
       isGameActive: true,
       showWordSelection: true,
@@ -210,10 +211,15 @@ export default {
 
     // 更新前端计时器显示
     updateTimer(remainingSeconds){
-      this.currentTimer = remainingSeconds;
+      if(this.showWordSelection){
+        this.currentTimer=180;
+      }
+      else {
+        this.currentTimer = remainingSeconds;
+      }
       this.selectionTimer = remainingSeconds; 
-      if(remainingSeconds == 0 && this.showWordSelection){//当计时器还剩60秒的时候
-        console.log('计时器到达180秒，强制开始游戏');
+      if(remainingSeconds == 0 && this.showWordSelection){//当计时器还剩15秒的时候
+        console.log('计时器到达15秒，强制开始游戏');
         this.forceStartGame();
       }
 
@@ -232,7 +238,6 @@ export default {
       console.log('当前游戏阶段:', this.currentPhase,this.isPainter ,this.scores,this.currentPainterId, this.currentPainter );
       if(this.currentPhase =='WaitingForPainterToChooseWord'){
         // 如果是画家并且处于选词阶段，显示选词界面
-        //this.showWordSelectionModal();
          this.showWordSelection = true; 
       }
       else{
@@ -252,9 +257,9 @@ export default {
       // 如果是画家且还在选词状态，自动选择第一个词汇
       if(this.isPainter && this.showWordSelection){
         if(this.wordOptions && this.wordOptions.length>0){
-          const selectedWord = this.wordOptions[0];
-          this.targetWord = selectedWord.text;
-          console.log('画家超时，自动选择词汇',selectedWord.text);
+          this.selectedWord = this.wordOptions[0];
+          this.targetWord = this.selectedWord;
+          console.log('画家超时，自动选择词汇',this.selectedWord);
         }
       }
       signalRService.confirmWordSelection(this.targetWord);
@@ -308,8 +313,11 @@ export default {
           console.error(`[SignalR] 加入房间组失败: ${err.message || '未知错误'}`);
           this.errorMessage = '加入房间失败，正在尝试重新连接';
           try{
-            signalRService.initialize(this.$route.params.roomId);
-            signalRService.joinGroup(this.$route.params.roomId, playerId);
+            signalRService.initialize(this.$route.params.roomId).then(() => {
+              console.log('[SignalR] 重新初始化成功');
+              signalRService.joinGroup(this.$route.params.roomId, playerId);
+            });
+            
             console.log('[SignalR] 重新连接成功，并且重新加入房间组');
           }catch(err){
             console.error('[SignalR] 重新连接失败:', err);
@@ -340,16 +348,7 @@ export default {
       }
     },
     disconnectSignalR() {
-      if (signalRService.hubConnection && signalRService.isConnected.value) {
-        signalRService.hubConnection.stop()
-          .then(() => {
-            signalRService.isConnected.value = false;
-            console.log('[GameRoom] SignalR连接已断开');
-          })
-          .catch(err => {
-            console.error('[GameRoom] SignalR断开失败:', err);
-          });
-      }
+      signalRService.disconnect();
     },
 
     showWordSelectionModal() {
@@ -375,7 +374,7 @@ export default {
 
     // 修改了选择词汇方法
     selectWord(word) {
-      this.targetWord = word.text;
+      this.targetWord = word;
       signalRService.confirmWordSelection(this.targetWord);
       this.showWordSelection = false;
       this.isGameActive = true;
@@ -386,7 +385,7 @@ export default {
       //   this.selectionTimerInterval = null;
       // }
 
-      console.log('画家选择了词汇:', word.text);
+      console.log('画家选择了词汇:', word);
     },
 
 
