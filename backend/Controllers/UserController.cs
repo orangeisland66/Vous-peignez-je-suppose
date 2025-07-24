@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Authorization; // 用于 AllowAnonymous
 
 namespace backend.Controllers
 {
-    [Route("users")]
+    [Route("api/users")]
     [ApiController]
     public class UserController : ControllerBase
     {

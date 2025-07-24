@@ -12,7 +12,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/gameHub': {
-        target: 'http://localhost:5076', // 后端地址
+        target: 'http://localhost:5000', // 后端地址
         ws: true, // 启用 WebSocket 代理
         changeOrigin: true
       }

@@ -61,7 +61,18 @@ builder.Services.AddScoped<GameRoomService>();
 builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<WordManager>();
-
+// 【1. 添加CORS服务】允许指定的前端源访问
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173") // 允许前端的源（必须精确匹配，包括协议和端口）
+            .AllowAnyHeader() // 允许所有请求头
+            .AllowAnyMethod() // 允许所有HTTP方法（GET/POST/PUT等）
+            .AllowCredentials(); // 若前端需要携带Cookie/凭证，需添加此配置
+    });
+});
 // 添加控制器
 builder.Services.AddControllers() // 或者 AddControllersWithViews()
     .AddJsonOptions(options =>
@@ -78,9 +89,11 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // 添加 SignalR 服务
-builder.Services.AddSignalR(); 
+builder.Services.AddSignalR();
 
 var app = builder.Build();
+app.Urls.Add("http://0.0.0.0:5000"); // 0.0.0.0 表示允许所有网络接口访问
+app.Urls.Add("https://0.0.0.0:5001");
 app.MapHub<GameHub>("/gameHub"); 
 // 配置HTTP请求管道
 if (app.Environment.IsDevelopment())
@@ -89,7 +102,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors("AllowFrontend"); // 应用上面定义的CORS政策
 // 使用路由和控制器
 app.UseRouting();
 app.MapControllers();

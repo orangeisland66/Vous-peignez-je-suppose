@@ -12,7 +12,7 @@ namespace backend.Controllers
 {
     // **修改控制器级别的路由**
     // 将 [Route("api/[controller]")] 改为 [Route("rooms")]
-    [Route("rooms")]
+    [Route("api/rooms")]
     // [Route("rooms")] // <-- 修改这里
     [ApiController]
     public class GameRoomController : ControllerBase
